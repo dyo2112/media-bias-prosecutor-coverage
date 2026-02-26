@@ -1,0 +1,150 @@
+{
+  "mean_n_claims_progressive": 1.6338966912639847,
+  "mean_n_claims_traditional": 1.0627450980392157,
+  "mean_n_sources_progressive": 6.191144965484408,
+  "mean_n_sources_traditional": 5.32192513368984,
+  "mean_n_causal_progressive": 0.6312782670792668,
+  "mean_n_causal_traditional": 0.31836007130124777,
+  "mean_n_policy_actions_progressive": 2.0947393477743392,
+  "mean_n_policy_actions_traditional": 1.7575757575757576,
+  "mean_n_comparisons_progressive": 0.2661271125922399,
+  "mean_n_comparisons_traditional": 0.11871657754010695,
+  "source_type_distribution": {
+    "Progressive": {
+      "police": 3131,
+      "victim": 665,
+      "defense_attorney": 1767,
+      "prosecutor": 8589,
+      "politician": 2608,
+      "community_member": 3111,
+      "journalist": 1756,
+      "expert": 2104,
+      "advocacy_group": 1714,
+      "total": 26009
+    },
+    "Traditional": {
+      "police": 1925,
+      "victim": 355,
+      "defense_attorney": 1272,
+      "prosecutor": 6298,
+      "politician": 994,
+      "community_member": 1707,
+      "journalist": 692,
+      "expert": 810,
+      "advocacy_group": 474,
+      "total": 14928
+    }
+  },
+  "source_type_chi2": 761.9261158995,
+  "source_type_chi2_p": 3.294336086169576e-159,
+  "source_type_chi2_dof": 8,
+  "source_stance_distribution": {
+    "Progressive": {
+      "critical": 6887,
+      "supportive": 5716,
+      "neutral": 13364
+    },
+    "Traditional": {
+      "critical": 2973,
+      "supportive": 2274,
+      "neutral": 9665
+    }
+  },
+  "causal_direction_distribution": {
+    "Progressive": {
+      "prosecutor_caused_harm": 1749,
+      "prosecutor_helped": 607,
+      "ambiguous": 295
+    },
+    "Traditional": {
+      "prosecutor_caused_harm": 485,
+      "prosecutor_helped": 312,
+      "ambiguous": 95
+    }
+  },
+  "claim_type_distribution": {
+    "Progressive": {
+      "performance": 1857,
+      "policy": 1991,
+      "character": 1728,
+      "competence": 1284
+    },
+    "Traditional": {
+      "performance": 702,
+      "policy": 733,
+      "character": 876,
+      "competence": 670
+    }
+  },
+  "policy_action_framing": {
+    "Progressive": {
+      "positive": 2301,
+      "negative": 1304,
+      "neutral": 5195
+    },
+    "Traditional": {
+      "positive": 932,
+      "negative": 564,
+      "neutral": 3433
+    }
+  },
+  "comparison_direction": {
+    "Progressive": {
+      "current": 492,
+      "predecessor": 90,
+      "neither": 489
+    },
+    "Traditional": {
+      "current": 142,
+      "predecessor": 33,
+      "neither": 138
+    }
+  },
+  "per_prosecutor": {
+    "Chesa Boudin": {
+      "n_articles": 3670,
+      "mean_claims": 1.5861035422343324,
+      "mean_sources": 6.04141689373297,
+      "mean_causal": 0.6367847411444142,
+      "mean_policy_actions": 1.9940054495912807,
+      "mean_comparisons": 0.25776566757493186,
+      "mean_total_extractions": 10.51607629427793
+    },
+    "Brooke Jenkins": {
+      "n_articles": 1450,
+      "mean_claims": 1.313793103448276,
+      "mean_sources": 5.359310344827586,
+      "mean_causal": 0.41172413793103446,
+      "mean_policy_actions": 1.8848275862068966,
+      "mean_comparisons": 0.16758620689655174,
+      "mean_total_extractions": 9.137241379310344
+    },
+    "Nancy O'Malley": {
+      "n_articles": 644,
+      "mean_claims": 1.1832298136645962,
+      "mean_sources": 5.341614906832298,
+      "mean_causal": 0.2732919254658385,
+      "mean_policy_actions": 1.9720496894409938,
+      "mean_comparisons": 0.08695652173913043,
+      "mean_total_extractions": 8.857142857142858
+    },
+    "Pamela Price": {
+      "n_articles": 531,
+      "mean_claims": 1.9642184557438795,
+      "mean_sources": 7.2259887005649714,
+      "mean_causal": 0.5932203389830508,
+      "mean_policy_actions": 2.790960451977401,
+      "mean_comparisons": 0.3239171374764595,
+      "mean_total_extractions": 12.898305084745763
+    },
+    "Steve Wagstaffe": {
+      "n_articles": 711,
+      "mean_claims": 0.44163150492264414,
+      "mean_sources": 5.227848101265823,
+      "mean_causal": 0.16877637130801687,
+      "mean_policy_actions": 1.3037974683544304,
+      "mean_comparisons": 0.04781997187060478,
+      "mean_total_extractions": 7.189873417721519
+    }
+  }
+}

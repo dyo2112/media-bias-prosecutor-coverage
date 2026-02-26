@@ -1,0 +1,246 @@
+{
+  "primary_test": {
+    "n_progressive": 100,
+    "n_traditional": 100,
+    "mean_progressive": -0.14291666666666664,
+    "mean_traditional": -0.11124999999999999,
+    "median_progressive": 0.0,
+    "median_traditional": 0.0,
+    "welch_t_stat": -0.8329958034743115,
+    "welch_t_p": 0.40585143823243486,
+    "mann_whitney_u": 4705.0,
+    "mann_whitney_p": 0.4461153178701043,
+    "cohens_d": -0.11780339626732445,
+    "bootstrap_diff": -0.03166666666666665,
+    "bootstrap_ci_low": -0.10525416666666669,
+    "bootstrap_ci_high": 0.04283749999999995,
+    "tost_delta": 0.2,
+    "tost_bound_raw": 0.05376189086230979,
+    "tost_p": 0.28087759188139905,
+    "tost_equivalent": false
+  },
+  "paired_county": {
+    "sf_boudin_vs_jenkins": {
+      "n_boudin": 85,
+      "n_jenkins": 57,
+      "mean_boudin": -0.14019607843137255,
+      "mean_jenkins": -0.11842105263157894,
+      "cohens_d": -0.07710408002354585,
+      "welch_t_p": 0.6557515809804073
+    },
+    "alameda_price_vs_omalley": {
+      "n_price": 15,
+      "n_omalley": 23,
+      "mean_price": -0.15833333333333333,
+      "mean_omalley": -0.09963768115942029,
+      "cohens_d": -0.2716914714613568,
+      "welch_t_p": 0.44315291838391935
+    }
+  },
+  "per_indicator": {
+    "n_ungrounded_claims": {
+      "mean_progressive": 0.5,
+      "mean_traditional": 0.74,
+      "cohens_d": -0.11953004790082107
+    },
+    "n_ungrounded_severe": {
+      "mean_progressive": 0.36,
+      "mean_traditional": 0.62,
+      "cohens_d": -0.14409894211774743
+    },
+    "n_systemic_blame": {
+      "mean_progressive": 0.23,
+      "mean_traditional": 0.23,
+      "cohens_d": 0.0
+    },
+    "n_source_imbalance_crit": {
+      "mean_progressive": 0.64,
+      "mean_traditional": 0.67,
+      "cohens_d": -0.02145429352314581
+    },
+    "n_source_imbalance_supp": {
+      "mean_progressive": 0.1,
+      "mean_traditional": 0.16,
+      "cohens_d": -0.16419242613101773
+    },
+    "n_loaded_language": {
+      "mean_progressive": 1.45,
+      "mean_traditional": 1.19,
+      "cohens_d": 0.09681007386373204
+    },
+    "n_loaded_negative": {
+      "mean_progressive": 0.55,
+      "mean_traditional": 0.38,
+      "cohens_d": 0.13712713566544327
+    },
+    "n_loaded_headline": {
+      "mean_progressive": 0.24,
+      "mean_traditional": 0.25,
+      "cohens_d": -0.015446130965475697
+    },
+    "n_missing_context": {
+      "mean_progressive": 0.77,
+      "mean_traditional": 0.95,
+      "cohens_d": -0.11960332242031782
+    },
+    "n_total": {
+      "mean_progressive": 3.46,
+      "mean_traditional": 3.71,
+      "cohens_d": -0.039219131630515734
+    }
+  },
+  "categorical_distributions": {
+    "evidence_quality": {
+      "Progressive": {
+        "none": 29,
+        "anonymous_source": 7,
+        "single_anecdote": 14,
+        "stats_without_baseline": 0,
+        "adequately_sourced": 0
+      },
+      "Traditional": {
+        "none": 53,
+        "anonymous_source": 9,
+        "single_anecdote": 12,
+        "stats_without_baseline": 0,
+        "adequately_sourced": 0
+      }
+    },
+    "language_type": {
+      "Progressive": {
+        "pejorative_label": 27,
+        "scare_quotes": 2,
+        "presuppositional_verb": 34,
+        "hyperbole": 41,
+        "ideological_framing": 41,
+        "dehumanizing": 0
+      },
+      "Traditional": {
+        "pejorative_label": 35,
+        "scare_quotes": 4,
+        "presuppositional_verb": 24,
+        "hyperbole": 32,
+        "ideological_framing": 24,
+        "dehumanizing": 0
+      }
+    },
+    "what_is_missing": {
+      "Progressive": {
+        "trend_context": 6,
+        "comparison_baseline": 3,
+        "policy_rationale": 30,
+        "systemic_factors": 5,
+        "legal_constraints": 2,
+        "prosecutor_response": 25,
+        "alternative_explanation": 5
+      },
+      "Traditional": {
+        "trend_context": 10,
+        "comparison_baseline": 6,
+        "policy_rationale": 38,
+        "systemic_factors": 6,
+        "legal_constraints": 4,
+        "prosecutor_response": 27,
+        "alternative_explanation": 3
+      },
+      "chi2": 2.396662105158746,
+      "chi2_p": 0.8798488249370976,
+      "chi2_dof": 6
+    },
+    "prominence_mechanism": {
+      "Progressive": {
+        "placement_lede": 3,
+        "placement_closing": 1,
+        "extended_quote": 44,
+        "sole_named_source": 7,
+        "no_counterbalance": 16,
+        "headline_framing": 2
+      },
+      "Traditional": {
+        "placement_lede": 4,
+        "placement_closing": 3,
+        "extended_quote": 39,
+        "sole_named_source": 25,
+        "no_counterbalance": 10,
+        "headline_framing": 0
+      },
+      "chi2": 14.57743158952792,
+      "chi2_p": 0.012329063173924355,
+      "chi2_dof": 5
+    }
+  },
+  "per_prosecutor": {
+    "Chesa Boudin": {
+      "n_articles": 85,
+      "mean_bias_score": -0.14019607843137255,
+      "median_bias_score": 0.0,
+      "mean_n_total": 3.4352941176470586,
+      "mean_n_ungrounded_claims": 0.47058823529411764,
+      "mean_n_ungrounded_severe": 0.35294117647058826,
+      "mean_n_source_imbalance_crit": 0.5882352941176471,
+      "mean_n_source_imbalance_supp": 0.10588235294117647,
+      "mean_n_loaded_negative": 0.5176470588235295,
+      "mean_n_loaded_headline": 0.21176470588235294,
+      "mean_n_missing_context": 0.7411764705882353
+    },
+    "Brooke Jenkins": {
+      "n_articles": 57,
+      "mean_bias_score": -0.11842105263157894,
+      "median_bias_score": 0.0,
+      "mean_n_total": 4.491228070175438,
+      "mean_n_ungrounded_claims": 0.9298245614035088,
+      "mean_n_ungrounded_severe": 0.8421052631578947,
+      "mean_n_source_imbalance_crit": 0.7192982456140351,
+      "mean_n_source_imbalance_supp": 0.24561403508771928,
+      "mean_n_loaded_negative": 0.5263157894736842,
+      "mean_n_loaded_headline": 0.3157894736842105,
+      "mean_n_missing_context": 1.1228070175438596
+    },
+    "Nancy O'Malley": {
+      "n_articles": 23,
+      "mean_bias_score": -0.09963768115942029,
+      "median_bias_score": 0.0,
+      "mean_n_total": 1.608695652173913,
+      "mean_n_ungrounded_claims": 0.2608695652173913,
+      "mean_n_ungrounded_severe": 0.21739130434782608,
+      "mean_n_source_imbalance_crit": 0.34782608695652173,
+      "mean_n_source_imbalance_supp": 0.0,
+      "mean_n_loaded_negative": 0.2608695652173913,
+      "mean_n_loaded_headline": 0.13043478260869565,
+      "mean_n_missing_context": 0.5217391304347826
+    },
+    "Pamela Price": {
+      "n_articles": 15,
+      "mean_bias_score": -0.15833333333333333,
+      "median_bias_score": -0.049999999999999996,
+      "mean_n_total": 3.6,
+      "mean_n_ungrounded_claims": 0.6666666666666666,
+      "mean_n_ungrounded_severe": 0.4,
+      "mean_n_source_imbalance_crit": 0.9333333333333333,
+      "mean_n_source_imbalance_supp": 0.06666666666666667,
+      "mean_n_loaded_negative": 0.7333333333333333,
+      "mean_n_loaded_headline": 0.4,
+      "mean_n_missing_context": 0.9333333333333333
+    },
+    "Steve Wagstaffe": {
+      "n_articles": 20,
+      "mean_bias_score": -0.10416666666666667,
+      "median_bias_score": 0.0,
+      "mean_n_total": 3.9,
+      "mean_n_ungrounded_claims": 0.75,
+      "mean_n_ungrounded_severe": 0.45,
+      "mean_n_source_imbalance_crit": 0.9,
+      "mean_n_source_imbalance_supp": 0.1,
+      "mean_n_loaded_negative": 0.1,
+      "mean_n_loaded_headline": 0.2,
+      "mean_n_missing_context": 0.95
+    }
+  },
+  "convergent_validity": {
+    "n_matched": 202,
+    "pearson_r": 0.2569342762643459,
+    "pearson_p": 0.00022317953723460486,
+    "spearman_r": 0.23724045543440622,
+    "spearman_p": 0.0006749437858490395
+  }
+}

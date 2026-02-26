@@ -1,0 +1,53 @@
+# Data files (too large for GitHub)
+output/*.parquet
+output/*.jsonl
+output/*.log
+output/figures/
+output/nul
+output/desktop.ini
+
+# Keep small stats/results files
+!output/06_stats_results.json
+!output/06_regression_tables.csv
+!output/08_extraction_stats.json
+!output/09_bias_stats.json
+!output/10_theme_stats.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+
+# LaTeX build artifacts
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.blg
+paper/*.bbl
+paper/nul
+paper/texput.log
+paper/desktop.ini
+paper/figures/desktop.ini
+
+# Windows
+desktop.ini
+Thumbs.db
+*.lnk
+
+# API keys and secrets
+run_extraction.bat
+.env
+*.key
+
+# Personal/temp files
+more_litreture/
+paper_draft.md
+pipeline_log.txt
+output09_run.log
+paper/to do.txt
+paper/feedback-*.md
