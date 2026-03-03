@@ -17,7 +17,7 @@ This repository contains the complete analysis pipeline for a research paper mea
 |---|---|---|---|
 | Chesa Boudin | San Francisco | Progressive | Jan 2020 – Jul 2022 |
 | Brooke Jenkins | San Francisco | Traditional | Jul 2022 – present |
-| Pamela Price | Alameda | Progressive | Jan 2023 – present |
+| Pamela Price | Alameda | Progressive | Jan 2023 – 2025 |
 | Nancy O'Malley | Alameda | Traditional | Sep 2009 – Jan 2023 |
 | Steve Wagstaffe | San Mateo | Traditional | Apr 2010 – present |
 
