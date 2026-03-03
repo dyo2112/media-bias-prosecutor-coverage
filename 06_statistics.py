@@ -10,6 +10,7 @@ Analyses:
   5. Interrupted time series at tenure transitions
   6. Equivalence test (TOST)
   7. Bootstrap confidence intervals
+  8. Sensitivity analysis excluding fallback-attributed articles
 
 Input:  output/04_bias_scores.parquet, output/05_frames.parquet
 Output: output/06_stats_results.json, output/06_regression_tables.csv
@@ -31,6 +32,7 @@ import statsmodels.formula.api as smf
 from config import (
     BIAS_PARQUET,
     FRAMES_PARQUET,
+    ATTRIBUTED_PARQUET,
     STATS_JSON,
     REGRESSION_CSV,
     PROSECUTORS,
@@ -200,6 +202,135 @@ def analysis_1_group_comparison(df: pd.DataFrame) -> dict:
         "mannwhitney_p": float(p_mann),
         "cohens_d": float(d),
         "cliffs_delta": float(delta),
+        "bootstrap_diff": diff_est,
+        "bootstrap_ci_lower": diff_lo,
+        "bootstrap_ci_upper": diff_hi,
+        "tost": tost,
+    }
+
+
+def _fallback_assignment_mask(df: pd.DataFrame) -> tuple[pd.Series, str]:
+    """Return fallback-attribution mask and detection method label."""
+    if "assigned_via_generic_da_fallback" in df.columns:
+        mask = df["assigned_via_generic_da_fallback"].fillna(False).astype(bool)
+        return mask, "explicit_flag"
+
+    # If Step 04 output is stale and lacks the explicit column, recover it from
+    # Step 03 by article_id (the source of truth for attribution metadata).
+    if "article_id" in df.columns and ATTRIBUTED_PARQUET.exists():
+        try:
+            attrs = pd.read_parquet(
+                ATTRIBUTED_PARQUET,
+                columns=["article_id", "assigned_via_generic_da_fallback"],
+            )
+            attrs = attrs.drop_duplicates(subset=["article_id"])
+            attr_map = (
+                attrs.assign(article_id=lambda x: x["article_id"].astype(str))
+                .set_index("article_id")["assigned_via_generic_da_fallback"]
+            )
+            joined = (
+                df["article_id"]
+                .astype(str)
+                .map(attr_map)
+            )
+            if joined.notna().any():
+                mask = joined.fillna(False).astype(bool)
+                return mask, "joined_from_03_attribution"
+        except Exception as e:
+            msg = str(e)
+            if "assigned_via_generic_da_fallback" not in msg:
+                logger.warning(f"Fallback flag join from {ATTRIBUTED_PARQUET.name} failed: {e}")
+
+    required = {"total_prosecutor_mentions", "generic_da_refs", "primary_prosecutor"}
+    if required.issubset(df.columns):
+        mask = (
+            (df["total_prosecutor_mentions"] == 0)
+            & (df["generic_da_refs"] > 0)
+            & df["primary_prosecutor"].notna()
+        )
+        return mask, "inferred_from_counts_and_generic_refs"
+
+    return pd.Series(False, index=df.index), "no_fallback_columns_available"
+
+
+def analysis_12_sensitivity_no_fallback(df: pd.DataFrame) -> dict:
+    """Recompute group comparison after excluding fallback-attributed articles."""
+    logger.info("\n" + "=" * 70)
+    logger.info("ANALYSIS 12: Sensitivity (Exclude Fallback Attributions)")
+    logger.info("=" * 70)
+
+    fallback_mask, method = _fallback_assignment_mask(df)
+    n_total = len(df)
+    n_excluded = int(fallback_mask.sum())
+    n_remaining = int(n_total - n_excluded)
+    excluded_pct = (100 * n_excluded / n_total) if n_total > 0 else 0.0
+
+    logger.info(
+        f"Fallback detection method: {method}; excluded {n_excluded:,}/{n_total:,} "
+        f"articles ({excluded_pct:.1f}%)"
+    )
+
+    sens_df = df.loc[~fallback_mask].copy()
+    prog = sens_df.loc[
+        sens_df["prosecutor_type"] == "Progressive", "composite_bias_score"
+    ].dropna().values
+    trad = sens_df.loc[
+        sens_df["prosecutor_type"] == "Traditional", "composite_bias_score"
+    ].dropna().values
+
+    if len(prog) < 5 or len(trad) < 5:
+        logger.warning(
+            f"Insufficient data after exclusion: Progressive={len(prog)}, "
+            f"Traditional={len(trad)}"
+        )
+        return {
+            "fallback_detection_method": method,
+            "n_total": int(n_total),
+            "n_excluded_fallback": int(n_excluded),
+            "n_remaining": int(n_remaining),
+            "excluded_pct": float(excluded_pct),
+            "error": "insufficient_data_after_exclusion",
+        }
+
+    t_stat, p_ttest = ttest_ind(prog, trad, equal_var=False)
+    u_stat, p_mann = mannwhitneyu(prog, trad, alternative="two-sided")
+    d = cohens_d(prog, trad)
+    diff_est, diff_lo, diff_hi = bootstrap_diff_ci(prog, trad, n_boot=10000)
+    tost = tost_test(prog, trad, bound=0.2)
+
+    logger.info(
+        f"After exclusion: Progressive n={len(prog)}, mean={np.mean(prog):.4f}; "
+        f"Traditional n={len(trad)}, mean={np.mean(trad):.4f}"
+    )
+    logger.info(f"Welch's t-test: t={t_stat:.4f}, p={p_ttest:.6f}")
+    logger.info(f"Mann-Whitney U: U={u_stat:.0f}, p={p_mann:.6f}")
+    logger.info(f"Cohen's d: {d:.4f}")
+    logger.info(
+        f"Bootstrap 95% CI for mean diff (Prog - Trad): "
+        f"{diff_est:.4f} [{diff_lo:.4f}, {diff_hi:.4f}]"
+    )
+    logger.info(
+        f"TOST Equivalence Test (bound=0.2d): p={tost['p_tost']:.6f}, "
+        f"equivalent={tost['equivalent']}"
+    )
+
+    return {
+        "fallback_detection_method": method,
+        "n_total": int(n_total),
+        "n_excluded_fallback": int(n_excluded),
+        "n_remaining": int(n_remaining),
+        "excluded_pct": float(excluded_pct),
+        "progressive_n": int(len(prog)),
+        "progressive_mean": float(np.mean(prog)),
+        "progressive_sd": float(np.std(prog, ddof=1)),
+        "traditional_n": int(len(trad)),
+        "traditional_mean": float(np.mean(trad)),
+        "traditional_sd": float(np.std(trad, ddof=1)),
+        "welch_t": float(t_stat),
+        "welch_p": float(p_ttest),
+        "mannwhitney_u": float(u_stat),
+        "mannwhitney_p": float(p_mann),
+        "cohens_d": float(d),
         "bootstrap_diff": diff_est,
         "bootstrap_ci_lower": diff_lo,
         "bootstrap_ci_upper": diff_hi,
@@ -388,12 +519,12 @@ def analysis_5_time_series(df: pd.DataFrame) -> dict:
         {
             "label": "SF: Boudin → Jenkins",
             "county_prosecutors": ["Chesa Boudin", "Brooke Jenkins"],
-            "transition_date": pd.Timestamp("2022-07-07"),
+            "transition_date": pd.Timestamp("2022-07-08"),
         },
         {
             "label": "Alameda: O'Malley → Price",
             "county_prosecutors": ["Nancy O'Malley", "Pamela Price"],
-            "transition_date": pd.Timestamp("2023-01-02"),
+            "transition_date": pd.Timestamp("2023-01-03"),
         },
     ]
 
@@ -751,12 +882,12 @@ def analysis_11_per_method_time_series(df: pd.DataFrame) -> dict:
         {
             "label": "SF: Boudin → Jenkins",
             "county_prosecutors": ["Chesa Boudin", "Brooke Jenkins"],
-            "transition_date": pd.Timestamp("2022-07-07"),
+            "transition_date": pd.Timestamp("2022-07-08"),
         },
         {
             "label": "Alameda: O'Malley → Price",
             "county_prosecutors": ["Nancy O'Malley", "Pamela Price"],
-            "transition_date": pd.Timestamp("2023-01-02"),
+            "transition_date": pd.Timestamp("2023-01-03"),
         },
     ]
 
@@ -856,6 +987,9 @@ def main() -> None:
     with timer("Analysis 11: Per-method time series"):
         all_results["per_method_time_series"] = analysis_11_per_method_time_series(analysis_df)
 
+    with timer("Analysis 12: Sensitivity (exclude fallback attributions)"):
+        all_results["sensitivity_no_fallback"] = analysis_12_sensitivity_no_fallback(analysis_df)
+
     # ── Save results ───────────────────────────────────────────────────
     with open(STATS_JSON, "w") as f:
         json.dump(all_results, f, indent=2, default=str)
@@ -876,6 +1010,19 @@ def main() -> None:
         if tost:
             logger.info(f"  Equivalence test: {'EQUIVALENT' if tost.get('equivalent') else 'NOT EQUIVALENT'} "
                          f"(p_TOST = {tost.get('p_tost', 'N/A'):.4f})")
+
+    sens = all_results.get("sensitivity_no_fallback", {})
+    if sens and "error" not in sens:
+        logger.info(
+            f"\nSensitivity (exclude fallback): excluded {sens.get('n_excluded_fallback', 0):,} "
+            f"/ {sens.get('n_total', 0):,} articles ({sens.get('excluded_pct', 0):.1f}%)"
+        )
+        logger.info(
+            f"  Progressive mean={sens.get('progressive_mean', 'N/A'):.4f}, "
+            f"Traditional mean={sens.get('traditional_mean', 'N/A'):.4f}"
+        )
+        logger.info(f"  Cohen's d = {sens.get('cohens_d', 'N/A'):.4f}")
+        logger.info(f"  p = {sens.get('welch_p', 'N/A'):.6f}")
 
     logger.info("\nDone.")
 

@@ -128,6 +128,8 @@ STANCE_LABELS = [
     "This text defends or supports the prosecutor's approach",
     "This text is neutral reporting about the prosecutor",
 ]
+STANCE_BATCH_SIZE = max(BATCH_SIZE, 64)
+DOC_SENT_BATCH_SIZE = max(BATCH_SIZE, 64)
 
 
 def method_b_stance(
@@ -139,64 +141,105 @@ def method_b_stance(
     Returns a Series of scores in [-1, +1] where negative = critical stance.
     """
     logger.info("Method B: Zero-shot stance classification")
-    scores = []
+    # Precompute prosecutor lookup for fast access in loop.
+    prosecutor_lookup = {p.name: p for p in PROSECUTORS}
+    generic_da_re = re.compile(
+        r"\b(?:the\s+da|the\s+district\s+attorney|the\s+prosecutor)\b",
+        re.IGNORECASE,
+    )
 
-    for _, row in tqdm(df.iterrows(), total=len(df), desc="Method B"):
-        primary = row["primary_prosecutor"]
+    # Build one flat list of paragraphs for batched inference and keep
+    # per-article pointers so final scoring matches the original logic.
+    all_texts: list[str] = []
+    article_para_indices: list[list[int] | None] = []
+
+    for row in tqdm(df.itertuples(index=False), total=len(df), desc="Method B prep"):
+        primary = getattr(row, "primary_prosecutor")
         if pd.isna(primary):
-            scores.append(np.nan)
+            article_para_indices.append(None)
             continue
 
-        p = next((p for p in PROSECUTORS if p.name == primary), None)
+        p = prosecutor_lookup.get(primary)
         if p is None:
-            scores.append(np.nan)
+            article_para_indices.append(None)
             continue
 
-        # Get paragraphs that mention the prosecutor
-        paragraphs = row["body"].split("\n")
-        relevant_paras = []
+        paragraphs = str(getattr(row, "body", "")).split("\n")
+        relevant_paras: list[str] = []
         search_terms = p.name_variants + [p.name]
+
+        # Named mentions.
         for para in paragraphs:
             para_lower = para.lower()
             if any(t.lower() in para_lower for t in search_terms):
-                if len(para.split()) > 10:  # skip very short paragraphs
+                if len(para.split()) > 10:
                     relevant_paras.append(para)
 
-        # Also include generic DA references in paragraphs
+        # Generic references, deduplicated.
         for para in paragraphs:
-            if re.search(r"\b(?:the\s+da|the\s+district\s+attorney|the\s+prosecutor)\b",
-                         para, re.IGNORECASE):
+            if generic_da_re.search(para):
                 if para not in relevant_paras and len(para.split()) > 10:
                     relevant_paras.append(para)
 
         if not relevant_paras:
-            scores.append(np.nan)
+            article_para_indices.append(None)
             continue
 
-        # Classify up to 8 paragraphs
-        texts = [truncate_words(p, MAX_TOKENS_SENTIMENT) for p in relevant_paras[:8]]
+        para_idxs: list[int] = []
+        for para in relevant_paras[:8]:
+            para_idxs.append(len(all_texts))
+            all_texts.append(truncate_words(para, MAX_TOKENS_SENTIMENT))
+        article_para_indices.append(para_idxs)
+
+    if not all_texts:
+        return pd.Series(np.nan, index=df.index, name="score_stance")
+
+    logger.info(
+        f"Method B batching: classifying {len(all_texts):,} paragraphs "
+        f"across {sum(1 for x in article_para_indices if x):,} articles"
+    )
+
+    # Batched zero-shot inference.
+    all_results: list[dict | None] = [None] * len(all_texts)
+    for i in tqdm(range(0, len(all_texts), STANCE_BATCH_SIZE), desc="Method B infer"):
+        batch = all_texts[i : i + STANCE_BATCH_SIZE]
         try:
             results = zeroshot_pipeline(
-                texts,
+                batch,
                 candidate_labels=STANCE_LABELS,
                 multi_label=False,
             )
             if isinstance(results, dict):
                 results = [results]
-
-            para_scores = []
-            for r in results:
-                # Get score for each stance
-                label_scores = dict(zip(r["labels"], r["scores"]))
-                critical = label_scores.get(STANCE_LABELS[0], 0)
-                supportive = label_scores.get(STANCE_LABELS[1], 0)
-                # Net stance: supportive - critical
-                para_scores.append(supportive - critical)
-
-            scores.append(float(np.mean(para_scores)))
+            if len(results) != len(batch):
+                logger.warning(
+                    f"Stance batch size mismatch at offset {i}: "
+                    f"expected {len(batch)}, got {len(results)}"
+                )
+            for j, r in enumerate(results):
+                if i + j < len(all_results):
+                    all_results[i + j] = r
         except Exception as e:
-            logger.warning(f"Stance error for article {row['article_id']}: {e}")
+            logger.warning(f"Stance batch error at offset {i}: {e}")
+
+    # Aggregate paragraph scores back to article-level stance.
+    scores: list[float] = []
+    for para_idxs in article_para_indices:
+        if not para_idxs:
             scores.append(np.nan)
+            continue
+
+        para_scores = []
+        for idx in para_idxs:
+            r = all_results[idx]
+            if not r:
+                continue
+            label_scores = dict(zip(r.get("labels", []), r.get("scores", [])))
+            critical = label_scores.get(STANCE_LABELS[0], 0)
+            supportive = label_scores.get(STANCE_LABELS[1], 0)
+            para_scores.append(supportive - critical)
+
+        scores.append(float(np.mean(para_scores)) if para_scores else np.nan)
 
     return pd.Series(scores, index=df.index, name="score_stance")
 
@@ -295,8 +338,8 @@ def method_d_doc_sentiment(
     texts = df["full_text"].apply(lambda t: truncate_words(t, MAX_TOKENS_SENTIMENT)).tolist()
     scores = []
 
-    for i in tqdm(range(0, len(texts), BATCH_SIZE), desc="Method D"):
-        batch = texts[i : i + BATCH_SIZE]
+    for i in tqdm(range(0, len(texts), DOC_SENT_BATCH_SIZE), desc="Method D"):
+        batch = texts[i : i + DOC_SENT_BATCH_SIZE]
         try:
             results = sentiment_pipeline(batch)
             for r in results:

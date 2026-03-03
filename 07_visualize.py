@@ -33,7 +33,7 @@ import matplotlib.dates as mdates
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from scipy.stats import ttest_ind, sem
+from scipy.stats import ttest_ind
 
 from config import (
     BIAS_PARQUET,
@@ -75,6 +75,31 @@ def setup_style():
 PROG_COLOR = "#e74c3c"  # red for progressive
 TRAD_COLOR = "#3498db"  # blue for traditional
 TYPE_COLORS = {"Progressive": PROG_COLOR, "Traditional": TRAD_COLOR}
+
+
+def _bootstrap_mean_ci(
+    values: np.ndarray,
+    n_boot: int = 5000,
+    ci: float = 0.95,
+    seed: int = 42,
+) -> tuple[float, float, float]:
+    """Bootstrap CI for a mean; returns (mean, lower, upper)."""
+    vals = np.asarray(values, dtype=float)
+    if len(vals) == 0:
+        return np.nan, np.nan, np.nan
+    if len(vals) == 1:
+        v = float(vals[0])
+        return v, v, v
+
+    rng = np.random.default_rng(seed)
+    boot_means = [
+        float(np.mean(rng.choice(vals, size=len(vals), replace=True)))
+        for _ in range(n_boot)
+    ]
+    alpha = (1 - ci) / 2
+    lo = float(np.percentile(boot_means, 100 * alpha))
+    hi = float(np.percentile(boot_means, 100 * (1 - alpha)))
+    return float(np.mean(vals)), lo, hi
 
 
 # ── Figure 1: Violin + box by prosecutor type ────────────────────────────
@@ -144,7 +169,8 @@ def fig2_per_prosecutor(df: pd.DataFrame):
 
     names = []
     means = []
-    cis = []
+    lower_errs = []
+    upper_errs = []
     colors = []
 
     for name in prosecutors_ordered.index:
@@ -157,13 +183,25 @@ def fig2_per_prosecutor(df: pd.DataFrame):
         p = next((p for p in PROSECUTORS if p.name == name), None)
         ideology = p.ideology if p else "Unknown"
 
+        mean_v, lo_v, hi_v = _bootstrap_mean_ci(
+            vals.values, n_boot=5000, seed=42 + len(names)
+        )
         names.append(f"{name}\n({ideology})")
-        means.append(vals.mean())
-        cis.append(1.96 * sem(vals))
+        means.append(mean_v)
+        lower_errs.append(max(mean_v - lo_v, 0.0))
+        upper_errs.append(max(hi_v - mean_v, 0.0))
         colors.append(TYPE_COLORS.get(ideology, "gray"))
 
     y_pos = range(len(names))
-    ax.barh(y_pos, means, xerr=cis, color=colors, alpha=0.7, edgecolor="black", linewidth=0.5)
+    ax.barh(
+        y_pos,
+        means,
+        xerr=[lower_errs, upper_errs],
+        color=colors,
+        alpha=0.7,
+        edgecolor="black",
+        linewidth=0.5,
+    )
     ax.set_yticks(y_pos)
     ax.set_yticklabels(names)
     ax.set_xlabel("Mean Composite Bias Score (95% CI)")
@@ -414,6 +452,12 @@ def fig6_forest_plot(stats_path, df=None):
     if not stats_path.exists():
         logger.warning("Stats JSON not found — skipping forest plot")
         return
+    if df is None:
+        logger.warning(
+            "Figure 6 requires article-level data to compute bootstrap CIs for d; "
+            "skipping to avoid synthetic intervals."
+        )
+        return
 
     with open(stats_path) as f:
         results = json.load(f)
@@ -427,47 +471,58 @@ def fig6_forest_plot(stats_path, df=None):
     # Overall comparison
     gc = results.get("group_comparison", {})
     if gc and "cohens_d" in gc:
-        labels.append("Overall (Prog vs Trad)")
-        effect_sizes.append(gc["cohens_d"])
-        categories.append("overall")
-        # Compute bootstrap CI for d if df available
-        if df is not None and "composite_bias_score" in df.columns:
-            prog = df.loc[df["prosecutor_type"] == "Progressive", "composite_bias_score"].dropna().values
-            trad = df.loc[df["prosecutor_type"] == "Traditional", "composite_bias_score"].dropna().values
-            lo, hi = _bootstrap_cohens_d(prog, trad, n_boot=5000)
-            ci_lowers.append(lo)
-            ci_uppers.append(hi)
+        if "composite_bias_score" in df.columns:
+            prog = df.loc[
+                df["prosecutor_type"] == "Progressive", "composite_bias_score"
+            ].dropna().values
+            trad = df.loc[
+                df["prosecutor_type"] == "Traditional", "composite_bias_score"
+            ].dropna().values
+            if len(prog) < 2 or len(trad) < 2:
+                logger.warning("Skipping overall effect in Figure 6: insufficient data for CI.")
+            else:
+                labels.append("Overall (Prog vs Trad)")
+                effect_sizes.append(gc["cohens_d"])
+                categories.append("overall")
+                lo, hi = _bootstrap_cohens_d(prog, trad, n_boot=5000)
+                ci_lowers.append(lo)
+                ci_uppers.append(hi)
         else:
-            ci_lowers.append(gc["cohens_d"] - 0.05)
-            ci_uppers.append(gc["cohens_d"] + 0.05)
-
+            logger.warning("Skipping overall effect in Figure 6: missing composite_bias_score.")
+    
     # Paired comparisons
     paired = results.get("paired_county", {})
     for key, val in paired.items():
         if "cohens_d" not in val:
             continue
-        short_label = f"{val.get('county', '')}: {val.get('progressive', '').split()[-1]} vs {val.get('traditional', '').split()[-1]}"
+        if "composite_bias_score" not in df.columns:
+            logger.warning("Skipping paired effects in Figure 6: missing composite_bias_score.")
+            break
+        p_name = val.get("progressive", "")
+        t_name = val.get("traditional", "")
+        prog = df.loc[
+            df["primary_prosecutor"] == p_name, "composite_bias_score"
+        ].dropna().values
+        trad = df.loc[
+            df["primary_prosecutor"] == t_name, "composite_bias_score"
+        ].dropna().values
+        if len(prog) < 2 or len(trad) < 2:
+            logger.warning(
+                f"Skipping paired effect in Figure 6 ({p_name} vs {t_name}): "
+                "insufficient data for CI."
+            )
+            continue
+        short_label = (
+            f"{val.get('county', '')}: {p_name.split()[-1]} vs {t_name.split()[-1]}"
+        )
         labels.append(short_label)
         effect_sizes.append(val["cohens_d"])
         categories.append("paired")
-        # Compute bootstrap CI for paired
-        if df is not None and "composite_bias_score" in df.columns:
-            p_name = val.get("progressive", "")
-            t_name = val.get("traditional", "")
-            prog = df.loc[df["primary_prosecutor"] == p_name, "composite_bias_score"].dropna().values
-            trad = df.loc[df["primary_prosecutor"] == t_name, "composite_bias_score"].dropna().values
-            if len(prog) > 10 and len(trad) > 10:
-                lo, hi = _bootstrap_cohens_d(prog, trad, n_boot=5000)
-                ci_lowers.append(lo)
-                ci_uppers.append(hi)
-            else:
-                ci_lowers.append(val["cohens_d"] - 0.15)
-                ci_uppers.append(val["cohens_d"] + 0.15)
-        else:
-            ci_lowers.append(val["cohens_d"] - 0.15)
-            ci_uppers.append(val["cohens_d"] + 0.15)
+        lo, hi = _bootstrap_cohens_d(prog, trad, n_boot=5000)
+        ci_lowers.append(lo)
+        ci_uppers.append(hi)
 
-    # Per-method — compute real bootstrap CIs if df is available
+    # Per-method
     method_labels = {
         "score_aspect_sentiment": "A: Aspect Sentiment",
         "score_stance": "B: Stance Classification",
@@ -478,17 +533,19 @@ def fig6_forest_plot(stats_path, df=None):
     for method, val in per_method.items():
         if "cohens_d" not in val:
             continue
+        if method not in df.columns:
+            logger.warning(f"Skipping {method} in Figure 6: missing column in dataframe.")
+            continue
+        prog = df.loc[df["prosecutor_type"] == "Progressive", method].dropna().values
+        trad = df.loc[df["prosecutor_type"] == "Traditional", method].dropna().values
+        if len(prog) < 2 or len(trad) < 2:
+            logger.warning(f"Skipping {method} in Figure 6: insufficient data for CI.")
+            continue
         labels.append(method_labels.get(method, method.replace("score_", "")))
         effect_sizes.append(val["cohens_d"])
-        if df is not None and method in df.columns:
-            prog = df.loc[df["prosecutor_type"] == "Progressive", method].dropna().values
-            trad = df.loc[df["prosecutor_type"] == "Traditional", method].dropna().values
-            lo, hi = _bootstrap_cohens_d(prog, trad, n_boot=5000)
-            ci_lowers.append(lo)
-            ci_uppers.append(hi)
-        else:
-            ci_lowers.append(val["cohens_d"] - 0.1)
-            ci_uppers.append(val["cohens_d"] + 0.1)
+        lo, hi = _bootstrap_cohens_d(prog, trad, n_boot=5000)
+        ci_lowers.append(lo)
+        ci_uppers.append(hi)
         categories.append("method")
 
     # Theme attribution (from 10_theme_stats.json)
@@ -500,19 +557,31 @@ def fig6_forest_plot(stats_path, df=None):
             theme_stats = json.load(f)
         theme_overall = theme_stats.get("overall", {})
         if "cohens_d" in theme_overall:
-            labels.append("Theme Attribution")
             raw_d = theme_overall["cohens_d"]
-            effect_sizes.append(-raw_d)  # negate: higher themes = more negative coverage
-            categories.append("theme")
-            if df is not None and "ta_composite_score" in df.columns:
-                prog = df.loc[df["prosecutor_type"] == "Progressive", "ta_composite_score"].dropna().values
-                trad = df.loc[df["prosecutor_type"] == "Traditional", "ta_composite_score"].dropna().values
-                lo, hi = _bootstrap_cohens_d(prog, trad, n_boot=5000)
-                ci_lowers.append(-hi)   # negate and swap
-                ci_uppers.append(-lo)
+            if "ta_composite_score" in df.columns:
+                prog = df.loc[
+                    df["prosecutor_type"] == "Progressive", "ta_composite_score"
+                ].dropna().values
+                trad = df.loc[
+                    df["prosecutor_type"] == "Traditional", "ta_composite_score"
+                ].dropna().values
+                if len(prog) < 2 or len(trad) < 2:
+                    logger.warning(
+                        "Skipping theme attribution effect in Figure 6: insufficient data for CI."
+                    )
+                else:
+                    labels.append("Theme Attribution")
+                    effect_sizes.append(
+                        -raw_d
+                    )  # negate: higher themes = more negative coverage
+                    categories.append("theme")
+                    lo, hi = _bootstrap_cohens_d(prog, trad, n_boot=5000)
+                    ci_lowers.append(-hi)   # negate and swap
+                    ci_uppers.append(-lo)
             else:
-                ci_lowers.append(-raw_d - 0.05)
-                ci_uppers.append(-raw_d + 0.05)
+                logger.warning(
+                    "Skipping theme attribution effect in Figure 6: ta_composite_score missing."
+                )
 
     if not labels:
         logger.warning("No effect sizes to plot")
@@ -642,6 +711,20 @@ def fig8_source_type_distribution(extraction_stats_path):
     prog = src_dist["Progressive"]
     trad = src_dist["Traditional"]
 
+    # Dynamic article counts from per-prosecutor stats (if available)
+    prog_article_n = 0
+    trad_article_n = 0
+    per_prosecutor = stats.get("per_prosecutor", {})
+    ideology_by_name = {p.name: p.ideology for p in PROSECUTORS}
+    for name, vals in per_prosecutor.items():
+        n_articles = int(vals.get("n_articles", 0))
+        ideology = ideology_by_name.get(name)
+        if ideology == "Progressive":
+            prog_article_n += n_articles
+        elif ideology == "Traditional":
+            trad_article_n += n_articles
+    total_article_n = prog_article_n + trad_article_n
+
     # Exclude 'total'
     source_types = [k for k in prog.keys() if k != "total"]
     prog_counts = [prog.get(s, 0) for s in source_types]
@@ -664,9 +747,9 @@ def fig8_source_type_distribution(extraction_stats_path):
     height = 0.35
 
     bars_prog = ax.barh(y - height / 2, [prog_pcts[i] for i in order], height,
-                         label=f"Progressive (n={prog_total})", color=PROG_COLOR, alpha=0.7)
+                         label=f"Progressive sources (n={prog_total:,})", color=PROG_COLOR, alpha=0.7)
     bars_trad = ax.barh(y + height / 2, [trad_pcts[i] for i in order], height,
-                         label=f"Traditional (n={trad_total})", color=TRAD_COLOR, alpha=0.7)
+                         label=f"Traditional sources (n={trad_total:,})", color=TRAD_COLOR, alpha=0.7)
 
     # Add count annotations
     for i, idx in enumerate(order):
@@ -678,7 +761,13 @@ def fig8_source_type_distribution(extraction_stats_path):
     ax.set_yticks(y)
     ax.set_yticklabels(labels)
     ax.set_xlabel("Proportion of Sources (%)")
-    ax.set_title("Source Type Distribution by Prosecutor Ideology\n(Appendix A: LLM Structural Extraction, n=4,763)")
+    if total_article_n > 0:
+        ax.set_title(
+            "Source Type Distribution by Prosecutor Ideology\n"
+            f"(Appendix A: LLM Structural Extraction, n={total_article_n:,} articles)"
+        )
+    else:
+        ax.set_title("Source Type Distribution by Prosecutor Ideology\n(Appendix A: LLM Structural Extraction)")
     ax.legend(loc="lower right")
 
     fig.tight_layout()
@@ -699,6 +788,10 @@ def fig9_bias_indicators(bias_stats_path):
         stats = json.load(f)
 
     per_ind = stats.get("per_indicator", {})
+    primary = stats.get("primary_test", {})
+    n_prog = int(primary.get("n_progressive", 0))
+    n_trad = int(primary.get("n_traditional", 0))
+    n_total = n_prog + n_trad
     if not per_ind:
         logger.warning("No per-indicator data — skipping")
         return
@@ -737,9 +830,9 @@ def fig9_bias_indicators(bias_stats_path):
     height = 0.35
 
     ax1.barh(y - height / 2, prog_means, height,
-             label="Progressive (n=100)", color=PROG_COLOR, alpha=0.7)
+             label=f"Progressive (n={n_prog:,})", color=PROG_COLOR, alpha=0.7)
     ax1.barh(y + height / 2, trad_means, height,
-             label="Traditional (n=100)", color=TRAD_COLOR, alpha=0.7)
+             label=f"Traditional (n={n_trad:,})", color=TRAD_COLOR, alpha=0.7)
 
     ax1.set_yticks(y)
     ax1.set_yticklabels(indicators, fontsize=9)
@@ -761,8 +854,13 @@ def fig9_bias_indicators(bias_stats_path):
     for i, d in enumerate(ds):
         ax2.text(d + 0.01 * np.sign(d), i, f"{d:.2f}", va="center", fontsize=8)
 
-    fig.suptitle("LLM-Based Bias Indicator Extraction Results\n(Appendix B, n=200 articles)",
-                 fontsize=13, y=1.02)
+    if n_total > 0:
+        fig.suptitle(
+            f"LLM-Based Bias Indicator Extraction Results\n(Appendix B, n={n_total:,} articles)",
+            fontsize=13, y=1.02
+        )
+    else:
+        fig.suptitle("LLM-Based Bias Indicator Extraction Results\n(Appendix B)", fontsize=13, y=1.02)
     fig.tight_layout()
     fig.savefig(FIGURES_DIR / "09_bias_indicators.png", bbox_inches="tight")
     plt.close(fig)
@@ -1074,6 +1172,10 @@ def fig12_theme_attr_differential(theme_stats_path):
         stats = json.load(f)
 
     per_theme = stats.get("per_theme", {})
+    overall = stats.get("overall", {})
+    n_prog = int(overall.get("progressive_n", 0))
+    n_trad = int(overall.get("traditional_n", 0))
+    n_total = n_prog + n_trad
     if not per_theme:
         logger.warning("No per_theme data — skipping")
         return
@@ -1131,8 +1233,13 @@ def fig12_theme_attr_differential(theme_stats_path):
         label = f"{rr:.1f}×" if rr < 10 else f"{rr:.0f}×"
         ax2.text(rr_d + 0.05, i, label, va="center", fontsize=8)
 
-    fig.suptitle("Prosecutor-Attributed Theme Analysis (Step 10, n=13,249)",
-                 fontsize=13, y=1.02)
+    if n_total > 0:
+        fig.suptitle(
+            f"Prosecutor-Attributed Theme Analysis (Step 10, n={n_total:,})",
+            fontsize=13, y=1.02
+        )
+    else:
+        fig.suptitle("Prosecutor-Attributed Theme Analysis (Step 10)", fontsize=13, y=1.02)
     fig.tight_layout()
     fig.savefig(FIGURES_DIR / "12_theme_attribution_differential.png", bbox_inches="tight")
     plt.close(fig)

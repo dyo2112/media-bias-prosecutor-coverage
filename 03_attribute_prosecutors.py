@@ -13,7 +13,7 @@ Output: output/03_attributed.parquet
 Adds columns:
     mentions_* (count per prosecutor), headline_mention_*,
     primary_prosecutor, prosecutor_type, total_prosecutor_mentions,
-    has_prosecutor_mention
+    has_prosecutor_mention, assigned_via_generic_da_fallback
 """
 
 import re
@@ -253,6 +253,7 @@ def main() -> None:
     with timer("Determining primary prosecutor"):
         primaries = []
         ideologies = []
+        fallback_flags = []
 
         for _, row in tqdm(df.iterrows(), total=len(df), desc="Primary assignment"):
             counts = {}
@@ -270,6 +271,7 @@ def main() -> None:
                 body_text=row["body"], headline_text=row["headline"],
             )
 
+            used_fallback = False
             # If no named mention but has generic DA references,
             # try to assign by date+county
             if primary is None and row["generic_da_refs"] > 0:
@@ -278,12 +280,15 @@ def main() -> None:
                     ideology = next(
                         p.ideology for p in PROSECUTORS if p.name == primary
                     )
+                    used_fallback = True
 
             primaries.append(primary)
             ideologies.append(ideology)
+            fallback_flags.append(bool(used_fallback and pd.notna(primary)))
 
         df["primary_prosecutor"] = primaries
         df["prosecutor_type"] = ideologies
+        df["assigned_via_generic_da_fallback"] = fallback_flags
 
     # ── Flag articles with any prosecutor mention ──────────────────────
     df["has_prosecutor_mention"] = (
@@ -301,6 +306,12 @@ def main() -> None:
 
         logger.info("\nBy ideology:")
         logger.info(df["prosecutor_type"].value_counts(dropna=False).to_string())
+
+        n_fallback = int(df["assigned_via_generic_da_fallback"].sum())
+        logger.info(
+            f"\nPrimary assignments via generic-DA fallback: {n_fallback:,} "
+            f"/ {int(df['primary_prosecutor'].notna().sum()):,}"
+        )
 
         # Per-prosecutor mention stats
         for p in PROSECUTORS:

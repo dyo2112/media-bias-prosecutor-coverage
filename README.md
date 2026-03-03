@@ -9,7 +9,7 @@ This repository contains the complete analysis pipeline for a research paper mea
 - **Evaluative framing differs, emotional tone does not.** Progressive prosecutors receive substantially more critical *stance* coverage (Cohen's *d* = −0.34) but nearly identical *sentiment* scores (*d* = 0.037). Media bias is not unitary — tone and framing are empirically independent dimensions.
 - **Accountability framing is 2× more frequent** for progressive prosecutors. Traditional prosecutors receive more human-interest framing. The press covers reform prosecutors differently *in kind* rather than in degree.
 - **Effects surge during recall campaigns** and are confirmed by within-county comparisons (same outlet, same jurisdiction, different prosecutor).
-- **Source ecology drives structural differences.** Progressive prosecutor coverage draws on 2× more advocacy group sources, 1.9× more expert sources, and 1.8× more politician quotes — the empirical fingerprint of institutional mobilization ("toplash").
+- **Source ecology drives structural differences.** Progressive prosecutor coverage draws on 2.4× more advocacy group sources, 1.4× more expert sources, and 1.5× more politician quotes — the empirical fingerprint of institutional mobilization ("toplash").
 
 ## Prosecutors Analyzed
 
