@@ -768,7 +768,7 @@ def fig8_source_type_distribution(extraction_stats_path):
         )
     else:
         ax.set_title("Source Type Distribution by Prosecutor Ideology\n(Appendix A: LLM Structural Extraction)")
-    ax.legend(loc="lower right")
+    ax.legend(loc="upper right")
 
     fig.tight_layout()
     fig.savefig(FIGURES_DIR / "08_source_type_distribution.png")

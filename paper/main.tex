@@ -38,12 +38,13 @@
 
 % ── Figure path ─────────────────────────────────────────────────────────
 \graphicspath{{figures/}}
+\input{generated_stats.tex}
 
 % ── Title ───────────────────────────────────────────────────────────────
 \title{Measuring Media Bias Toward Reform Prosecutors:\\
 A Multi-Method NLP Analysis of Bay Area News Coverage, 2019--2024}
-\author{[Author Name]\\[4pt]
-\textit{[Affiliation]}}
+\author{[Dvir Yogev]\\[4pt]
+\textit{[Criminal Law \& Justice Center, UC Berkeley]}}
 \date{}
 
 % ════════════════════════════════════════════════════════════════════════
@@ -54,7 +55,7 @@ A Multi-Method NLP Analysis of Bay Area News Coverage, 2019--2024}
 % ── Abstract ────────────────────────────────────────────────────────────
 \begin{abstract}
 \noindent
-Progressive prosecutors have faced sustained media scrutiny, but whether their coverage systematically differs from that of traditional prosecutors, and through what mechanisms, has not been empirically tested. Analyzing 136,313 Bay Area news articles published between 2019 and 2024, I develop a multi-method natural language processing pipeline combining aspect-based sentiment analysis, zero-shot stance classification, keyword theme detection, and media framing analysis to measure how five district attorneys spanning the progressive--traditional spectrum are covered. I find that media bias is not a unitary phenomenon: evaluative framing and emotional tone are empirically independent dimensions. While I detect no systematic difference in emotional tone, progressive prosecutors receive substantially more critical evaluative treatment: an effect that surges during recall campaigns and is confirmed by within-county comparisons. Progressive prosecutors also receive accountability framing at twice the rate of traditional counterparts, who are more often covered through human-interest narratives. These findings demonstrate that the press covers reform prosecutors differently in kind rather than in degree, and that research relying on tone alone systematically misses the evaluative dimension of coverage most consequential for prosecutorial politics and electoral accountability.
+Media coverage is the primary channel through which the public evaluates prosecutorial policy, yet whether the press covers reform-oriented prosecutors differently from their traditional counterparts remains untested at scale. I analyze 136,313 Bay Area news articles (2019--2024) using a multi-method NLP pipeline that separately measures emotional tone, evaluative stance, thematic emphasis, narrative framing, and source ecology across five district attorneys spanning the progressive--traditional spectrum. Media bias toward prosecutors is not a unitary phenomenon: its dimensions diverge sharply. Emotional tone surrounding prosecutor mentions is statistically equivalent across ideological groups, yet evaluative stance classification reveals substantially more critical framing of progressive prosecutors, an effect confirmed by within-county comparisons and robust to regression controls. When critical themes were explicitly attributed to a named prosecutor, the differential increases to the study's largest effect. Progressive prosecutors receive accountability framing at nearly twice the rate of traditional counterparts, who are more often covered through human-interest narratives. LLM-based structural extraction reveals a corresponding asymmetry in source ecology: progressive coverage draws disproportionately on advocacy, expert, and politician voices, while traditional coverage relies more heavily on the prosecutor's own statements. These differentials are event-driven rather than reflecting a stable editorial disposition. The press covers reform prosecutors differently in kind, not in degree: through systematic differences in evaluative framing, sourcing, and narrative structure that are invisible to tonal analysis alone.
 \end{abstract}
 
 \newpage
@@ -63,7 +64,7 @@ Progressive prosecutors have faced sustained media scrutiny, but whether their c
 % ════════════════════════════════════════════════════════════════════════
 \section{Introduction}
 
-The progressive prosecution movement represents one of the most significant developments in American criminal justice over the past decade. Beginning with the election of reform-minded district attorneys in major cities---including Larry Krasner in Philadelphia (2017), Kim Foxx in Chicago (2016), and Chesa Boudin in San Francisco (2019)---a new generation of prosecutors has sought to reduce mass incarceration, curtail cash bail, decline to prosecute low-level offenses, and hold law enforcement accountable \citep{bellin2019,sklansky2017}. These prosecutors have faced intense political opposition, including recall campaigns, legislative challenges, and sustained media scrutiny \citep{bazelon2019}. \citet{goldstein2024} characterizes this resistance as ``toplash'': elite-driven opposition from wealthy donors, police unions, and political establishments that is distinct from grassroots backlash and specifically targets prosecutors' reform agendas through media campaigns and institutional pressure.
+The progressive prosecution movement represents one of the most significant developments in American criminal justice over the past decade. Beginning with the election of reform-minded district attorneys in major cities (including Larry Krasner in Philadelphia (2017), Kim Foxx in Chicago (2016), and Chesa Boudin in San Francisco (2019)) a new generation of prosecutors has sought to reduce mass incarceration, curtail cash bail, decline to prosecute low-level offenses, and hold law enforcement accountable \citep{bellin2019,sklansky2017}. These prosecutors have faced intense political opposition, including recall campaigns, legislative challenges, and sustained media scrutiny \citep{bazelon2019}. \citet{goldstein2024} characterizes this resistance as ``toplash'': elite-driven opposition from wealthy donors, police unions, and political establishments that is distinct from grassroots backlash and specifically targets prosecutors' reform agendas through media campaigns and institutional pressure.
 
 Media coverage plays a crucial role in shaping public attitudes toward criminal justice reform. How prosecutors are portrayed in the press, whether through sympathetic human-interest narratives or critical accountability frames, can influence public support for reform policies and, ultimately, electoral outcomes \citep{iyengar1991,entman1993}. The recall of San Francisco District Attorney Chesa Boudin in June 2022, widely attributed to perceptions of rising crime and prosecutorial leniency, underscores the political salience of media framing in this domain \citep{yogev2026holding}.
 
@@ -95,11 +96,14 @@ However, empirical analysis of media coverage of individual prosecutors remains 
 
 Recent advances in natural language processing have expanded the toolkit available for media bias measurement. Transformer-based models, including BERT \citep{devlin2019} and its derivatives, have achieved state-of-the-art performance on sentiment analysis, stance detection, and text classification tasks \citep{liu2019}. Zero-shot classification approaches, which leverage models trained on natural language inference to classify text without task-specific training data, are particularly valuable in political communication research where labeled training corpora are scarce \citep{yin2019}.
 
-Applications of NLP to media bias detection include \citet{hamborg2019}, who develop a framework for identifying framing bias through word choice and emphasis, and \citet{fan2019}, who use BERT-based models to detect informational and lexical bias in news articles. \citet{card2015} apply latent frame analysis to immigration coverage, demonstrating that computational methods can reliably detect framing patterns at scale. This study builds on these approaches by combining multiple NLP methods---sentiment analysis, stance detection, and frame classification---into a composite measure that captures different dimensions of media treatment.
+Applications of NLP to media bias detection include \citet{hamborg2019}, who develop a framework for identifying framing bias through word choice and emphasis, and \citet{fan2019}, who use BERT-based models to detect informational and lexical bias in news articles. \citet{card2015} apply latent frame analysis to immigration coverage, demonstrating that computational methods can reliably detect framing patterns at scale. This study builds on these approaches by integrating multiple NLP measurements (sentiment analysis, stance detection, thematic emphasis, and frame classification) to capture distinct but related dimensions of media treatment.
 
 
 % ════════════════════════════════════════════════════════════════════════
 \section{Data and Methods}
+
+\noindent
+The empirical strategy proceeds from sample construction to complementary measurement layers and then to comparative inference. I first construct a prosecutor-attributed corpus from the full news archive through relevance filtering and attribution/disambiguation. I then estimate four directional prosecutor-focused scores (Methods A--D) on a common signed scale and combine them into a composite index for a parsimonious overall test. Framing is estimated separately because it is a categorical narrative-lens outcome rather than a signed intensity measure. Prosecutor-attributed theme detection is also separate because it measures explicit prosecutor--theme linkage rather than local thematic salience alone. Finally, LLM structural extraction captures article architecture (who is quoted, what claims are made, and how causality is asserted), which complements score-based NLP by measuring content structure directly. Inference combines group and paired comparisons, controlled regressions, and segmented interrupted time-series models with quarterly heterogeneity summaries.
 
 \subsection{Data}
 
@@ -107,7 +111,7 @@ The analysis draws on a corpus of 136,313 news articles published between Januar
 
 \subsection{Article Filtering and Prosecutor Attribution}
 
-Not all articles in the corpus concern crime and criminal justice. I apply a two-stage relevance filter: first, a keyword-based pre-filter requiring at least two crime/justice terms (prosecutor, arrest, sentencing, felony, etc.), which retains 107,713 articles; second, for future refinement, a zero-shot classifier (BART-MNLI; \citealt{lewis2020}) to distinguish crime/justice articles from other topics. Prosecutor attribution uses regex-based name matching across known variants (e.g., ``Boudin,'' ``Chesa Boudin,'' ``DA Boudin'') with special disambiguation logic for ``Price'' (counted as Pamela Price only within 50 words of contextual terms such as ``DA,'' ``prosecutor,'' ``Alameda,'' or ``Pamela''). Articles are assigned a primary prosecutor based on mention frequency, with headline mentions weighted at $3\times$. A disambiguation step ensures that generic last-name matches (e.g., ``Jenkins'' appearing in articles before Brooke Jenkins took office in July 2022; ``Price'' in articles about price gouging before Pamela Price took office in January 2023) are validated against first-name co-occurrence, preventing false positive attributions from other individuals sharing the surname or from the common English word ``price.'' This process yields 12,953 articles attributed to five prosecutors (Table~\ref{tab:prosecutors}). Importantly, the relevance filter uses generic crime and justice vocabulary (``prosecutor,'' ``arrest,'' ``felony'') that is orthogonal to the outcome-specific theme dictionaries applied later (``soft-on-crime,'' ``recall campaign,'' ``public-safety-failure''); the filtering step therefore does not select articles on the basis of the thematic variables subsequently measured.
+Not all articles in the corpus concern crime and criminal justice. I apply a relevance filter requiring at least two crime/justice terms (prosecutor, arrest, sentencing, felony, etc.), which retains 107,713 articles; a zero-shot classifier (BART-MNLI; \citealt{lewis2020}) serves as a secondary relevance screen for additional validation checks. Prosecutor attribution then uses regex-based name matching across known variants (e.g., ``Boudin,'' ``Chesa Boudin,'' ``DA Boudin'') with contextual disambiguation for ``Price'' (counted as Pamela Price only within 50 words of terms such as ``DA,'' ``prosecutor,'' ``Alameda,'' or ``Pamela''). Articles are assigned a primary prosecutor by mention frequency, with headline mentions weighted at $3\times$. A further disambiguation step requires first-name confirmation for ambiguous pre-tenure surname matches (e.g., ``Jenkins'' before Brooke Jenkins took office in July 2022; ``Price'' before Pamela Price took office in January 2023), reducing false positives from other individuals or non-name uses of ``price.'' When no named prosecutor appears but the article refers to ``district attorney''/``prosecutor,'' attribution falls back to county-by-date officeholder assignment; these cases are flagged and evaluated in sensitivity analyses. This process yields $n=\NAttributedTotal$ articles attributed to five prosecutors (Table~\ref{tab:prosecutors}). Importantly, the relevance filter uses generic crime and justice vocabulary (``prosecutor,'' ``arrest,'' ``felony'') that is orthogonal to the outcome-specific theme dictionaries applied later (``soft-on-crime,'' ``recall campaign,'' ``public-safety-failure''); the filtering step therefore does not select articles on the basis of the thematic variables subsequently measured.
 
 \begin{table}[ht]
 \centering
@@ -131,23 +135,21 @@ Steve Wagstaffe  & San Mateo     & Traditional  & 2010--present & 1,648 \\
 
 \subsection{Multi-Method Bias Detection}
 
-I employ four complementary methods to measure the tone of coverage directed at each prosecutor, combined into an aggregate tone-evaluation index (hereafter ``composite'') normalized to $[-1, +1]$ (negative = more negative toward the prosecutor):
+I estimate four prosecutor-focused article-level scores (Methods A--D) and combine them into a weighted composite used for the paper's primary directional comparisons. These methods are grouped because each produces a signed directional measure on a common $[-1,+1]$ scale.
 
-\textbf{Method A: Aspect-based sentiment analysis (weight: 0.35).} For each prosecutor mention in an article, I extract a three-sentence context window centered on the mention and compute sentiment polarity using a fine-tuned RoBERTa model (cardiffnlp/twitter-roberta-base-sentiment-latest; \citealt{loureiro2022}). The article-level score averages across all mention windows. This approach measures sentiment \emph{toward the prosecutor specifically}, rather than the overall tone of the article, a critical distinction in crime reporting, which is inherently negative in subject matter.
+\textbf{Method A: Aspect-based sentiment analysis (weight: 0.35).} For each prosecutor mention in an article, I extract a three-sentence context window centered on the mention and compute sentiment polarity using a fine-tuned RoBERTa model (cardiffnlp/twitter-roberta-base-sentiment-latest; \citealt{loureiro2022}). The article-level score averages across mention windows, measuring sentiment \emph{toward the prosecutor} rather than overall article tone---a critical distinction in crime reporting, where subject matter is inherently negative.
 
-\textbf{Method B: Zero-shot stance classification (weight: 0.30).} For paragraphs containing prosecutor mentions, I classify the text's stance toward the prosecutor using BART-MNLI \citep{lewis2020} with three candidate labels: ``This text criticizes the prosecutor's handling of crime,'' ``This text defends the prosecutor's approach,'' and ``This text is neutral about the prosecutor.'' The article-level score is the net balance of critical versus defensive paragraphs.
+\textbf{Method B: Zero-shot stance classification (weight: 0.30).} For paragraphs containing prosecutor mentions, I classify stance using BART-MNLI \citep{lewis2020} with three labels: criticism, defense/support, and neutral reporting about the prosecutor. The article-level score is the balance of supportive minus critical paragraph probabilities.
 
-\textbf{Method C: Enhanced keyword analysis (weight: 0.20).} I apply curated theme dictionaries---including categories for crime-rising, soft-on-crime, recall, case dismissal, releasing criminals, public safety failure, victim neglect, police conflict, and office dysfunction---within three-sentence windows around prosecutor mentions. A negation detection module (checking three words before each keyword for negation terms) prevents false positives. This method operationalizes the anti-prosecutor framing patterns identified in prior qualitative work.
+\textbf{Method C: Enhanced keyword analysis (weight: 0.20).} I apply curated theme dictionaries (crime-rising, soft-on-crime, recall, case dismissal, releasing criminals, public safety failure, victim neglect, police conflict, and office dysfunction) within three-sentence windows around prosecutor mentions. A negation check in the preceding words reduces false positives. These dictionaries operationalize the anti-prosecutor framing patterns identified in prior qualitative work on prosecutorial media coverage \citep{bazelon2019,goldstein2024}.
 
-\textbf{Method D: Document-level sentiment baseline (weight: 0.15).} Whole-article sentiment serves as a control measure, capturing the general negativity of crime coverage independent of prosecutor-specific framing.
+\textbf{Method D: Document-level sentiment baseline (weight: 0.15).} Whole-article sentiment serves as a control, capturing general negativity in crime reporting that is not necessarily prosecutor-specific.
 
-\textbf{Prosecutor-attributed theme detection.} To complement the keyword-based theme analysis (Method~C), I implement a multi-method theme attribution algorithm that requires critical themes to be \emph{explicitly linked to prosecutors} through co-occurring linguistic patterns rather than simple keyword proximity. The algorithm employs four detection methods: (1) context-aware dictionary matching, in which compound regex patterns require both a prosecutor reference and a theme keyword within the same expression (e.g., ``crime rising because of the DA'' rather than merely ``crime'' near ``prosecutor''); (2) relationship-based regex patterns capturing causal structures linking prosecutors to outcomes; (3) targeted criticism detection using high-confidence blame and failure patterns; and (4) sentence-level co-occurrence analysis confirming that prosecutor references and criticism keywords appear in the same sentence. Each method produces a score on a 0--25 scale, combined with weights of 0.30, 0.35, 0.15, and 0.20 respectively. A multi-method validation step caps single-method scores at 15, applies a $1.1\times$ multiplier when two methods agree, and a $1.25\times$ multiplier for three or more, ensuring that high scores reflect convergent evidence. Nine themes are tracked: crime rising, releasing criminals, victim neglect, police conflict, office dysfunction, soft on crime, case dismissal, recall, and public safety failure.
-
-The composite score weights reflect a deliberate precision--generality hierarchy: the two prosecutor-targeted measures (aspect-based sentiment, 0.35; stance, 0.30) are prioritized over the two more general text-level measures (keywords, 0.20; document sentiment, 0.15), on the theory that prosecutor-specific precision outweighs broader lexical coverage. This weighting scheme is empirically conservative: it assigns the highest weight (0.35) to the method with the weakest effect (aspect-based sentiment, $d = 0.037$) and correspondingly lower weights to the methods with larger effects (stance $d = -0.341$ at 0.30; keywords $d = -0.218$ at 0.20), mechanically attenuating the composite rather than inflating it. To verify that results do not depend on this choice, I recomputed the composite using z-standardized method scores under six alternative specifications (equal weights, inverse weights, effect-proportional weights, and three leave-one-out variants; $n = 10{,}000$ articles with complete scores for all four methods). Across all specifications the composite remains negative and highly significant ($p < 10^{-4}$), with effect sizes ranging from $d = -0.08$ (dropping stance, the strongest single method) to $d = -0.39$ (retaining only the two evaluative methods). The current weighting produces one of the smallest composite effects among all schemes tested.
+\textbf{Composite construction (A--D only).} The composite score is the weighted average of Methods A--D (0.35, 0.30, 0.20, 0.15) on a common $[-1,+1]$ direction where more negative values indicate more negative treatment. If one or more method scores are missing, weights are renormalized over available methods. The weights follow a precision--generality hierarchy: the two prosecutor-targeted measures (aspect sentiment, 0.35; stance, 0.30) are prioritized over the two text-level measures (keywords, 0.20; document sentiment, 0.15). This scheme is empirically conservative: it assigns the highest weight to the method with the weakest effect (aspect sentiment, $d = 0.037$) and lower weights to the methods with larger effects (stance $d = -0.341$; keywords $d = -0.218$), mechanically attenuating the composite. Six alternative weighting specifications (equal, inverse, effect-proportional, and three leave-one-out variants) confirm the composite effect is negative and significant under every scheme, with $d$ ranging from $-0.08$ (dropping stance) to $-0.39$ (retaining only evaluative methods); the current weights produce one of the most conservative estimates. The composite provides a parsimonious overall test of directional differential treatment, while per-method analyses identify which dimensions drive that aggregate result.
 
 \subsection{Media Framing Analysis}
 
-Beyond tone, I analyze \emph{how} prosecutors are framed by classifying prosecutor-containing paragraphs into five media frames using BART-MNLI zero-shot classification:
+Framing is estimated separately from the A--D composite because it measures narrative \emph{type} (which frame is used), not directional evaluative intensity on a single signed scale. For each attributed article, I estimate \texttt{frame\_*} probabilities and a \texttt{dominant\_frame} from prosecutor-centered text windows (five-sentence windows around mentions) using BART-MNLI in multi-label mode, with keyword-based fallback scoring when no valid mention window is available or model inference fails.
 
 \begin{enumerate}[nosep]
   \item \textbf{Accountability}: The prosecutor is held responsible for outcomes (e.g., crime rates, case decisions).
@@ -157,20 +159,44 @@ Beyond tone, I analyze \emph{how} prosecutors are framed by classifying prosecut
   \item \textbf{Reform/ideology}: The prosecutor is characterized through an ideological or reformist lens.
 \end{enumerate}
 
-Although Method~B (stance) and the framing analysis both employ BART-MNLI, they are not measuring the same construct: stance detection classifies whether a paragraph criticizes, defends, or is neutral toward the prosecutor, while framing classification identifies the narrative lens (accountability, conflict, human interest, etc.). To verify empirical independence, I computed pairwise correlations between article-level stance scores and all five frame probability scores ($n = 10{,}000$). Correlations range from $r = -0.10$ (human interest) to $r = -0.21$ (accountability), far below the $r > 0.8$ threshold for methodological redundancy. The modest negative values are theoretically expected (more critical stance co-occurs with more accountability framing) and confirm convergent validity rather than collinearity.
+Method~B and framing both use BART-MNLI but operationalize different constructs: stance asks whether language criticizes or supports a prosecutor, whereas framing asks which narrative lens structures the article. Pairwise correlations between article-level stance scores and all five frame probabilities range from $r = -0.10$ (human interest) to $r = -0.21$ (accountability), far below the $r > 0.8$ threshold for methodological redundancy; the modest negative values are theoretically expected (critical stance co-occurs with accountability framing) and confirm convergent validity rather than collinearity.
 
-\subsection{LLM-Based Structural Content Extraction (Appendices A--B)}
+\subsection{Prosecutor-Attributed Theme Detection}
 
-The four NLP methods above, and the framing analysis, all operate on the \emph{aggregate statistical signal} of text: they assign continuous scores by detecting linguistic patterns across many tokens. This is powerful for measuring the overall tone or evaluative stance of coverage but does not reveal \emph{what specific content} articles contain: who is quoted, what claims are made, and with what evidence. To examine these structural features, I employ a complementary approach using Google's \textbf{langextract} library (Gemini 2.5 Flash), reported fully in Appendices~\ref{app:extraction} and~\ref{app:bias}.
+Prosecutor-attributed theme detection is estimated separately from both the A--D composite and frame analysis because it targets explicit prosecutor-linked critical narratives rather than general evaluative tone or frame category prevalence. Nine themes are tracked: crime-rising, releasing criminals, victim neglect, police conflict, office dysfunction, soft-on-crime, case dismissal, recall, and public safety failure. To complement Method~C's proximity-based theme signal, the attribution algorithm requires explicit prosecutor-theme linkage via four detection methods: (1)~context-aware dictionary patterns requiring both a prosecutor reference and a theme keyword within the same expression (e.g., ``crime rising because of the DA'' rather than merely ``crime'' near ``prosecutor''), (2)~relationship-based regex patterns capturing causal structures linking prosecutors to outcomes, (3)~targeted criticism patterns, and (4)~sentence-level co-occurrence checks. Method scores (0--25 each) are combined with weights 0.30, 0.35, 0.15, and 0.20, then adjusted by method-agreement rules (single-method caps at 15; $1.1\times$ multiplier for two-method agreement, $1.25\times$ for three or more). The resulting \texttt{ta\_*} variables are used in dedicated theme-attribution analyses.
 
-Langextract differs from the NLP methods in three fundamental ways. First, it is \emph{extractive} rather than \emph{classificatory}: instead of assigning a score to an article, it identifies and categorizes discrete content elements---specific source quotes, causal claims, loaded phrases---and anchors each extraction to the exact text span it originates from. This source grounding allows for verification and provides a direct link between extracted facts and the article text. Second, it operates with \emph{explicit structured schemas}: the analyst specifies categories of interest in advance (source role, claim type, evidence quality, bias mechanism), and the model returns instances that fit those categories, rather than learning latent patterns from a training corpus. Third, because the extraction schema is analyst-defined and the model is prompted with diverse few-shot examples, the approach is more interpretable and auditable than black-box transformer classifiers, but it is also more dependent on schema design choices and may miss patterns not anticipated by the analyst.
+\subsection{LLM-Based Structural Content Extraction}
 
-The conceptual distinction matters for interpreting results. The NLP methods measure the \emph{how} of coverage (how critical, how emotionally charged, how evaluatively framed); langextract measures the \emph{what} (what sources appear, what specific claims are asserted, what journalistic standards are violated). The two approaches are therefore complementary rather than redundant. When both converge, as in the excess of prosecutor-attributed harm claims (Appendix~\ref{app:extraction}) alongside the excess of loaded negative language (Appendix~\ref{app:bias}) in progressive prosecutor coverage, the evidence is stronger than either approach alone. When they diverge, as when the overall bias indicator result is null (Appendix~\ref{app:bias}) despite significant stance and keyword effects (Section~4), the divergence reveals that the differential operates through aggregate framing mechanisms rather than discrete, identifiable journalistic violations.
+The preceding NLP analyses (Methods A--D, framing, and prosecutor-attributed theme detection) quantify evaluative, framing, and attributional signal in text. They are well suited for comparative inference at scale but do not directly enumerate full article structure (who is quoted, what claims are made, and how causal attribution is framed). To capture that layer, I add a complementary LLM structural extraction approach using Google's \textbf{langextract} library (Gemini 2.5 Flash), applied to all attributed articles in the analysis sample ($n=\NAttributedTotal$, with $n=\NProgAttributed$ progressive and $n=\NTradAttributed$ traditional).
+
+Langextract is extractive rather than classificatory: outputs are schema-constrained instances linked to exact source spans. The extraction schema covers source attribution, claims against the prosecutor, causal claims, policy actions, and explicit comparisons. Model behavior is stabilized through fixed prompting and few-shot calibration examples, yielding auditable structural measures that can be aligned with score-based NLP patterns.
+
+\begin{table}[ht]
+\centering
+\caption{Complementary measurement layers: NLP methods vs.\ LLM structural extraction.}
+\label{tab:methods_complement}
+\small
+\begin{tabularx}{\textwidth}{p{2.0cm}p{3.2cm}p{3.2cm}X}
+\toprule
+Dimension & NLP scoring/detection (A--D + framing + theme attribution) & LLM extraction (langextract) & Complementary role \\
+\midrule
+Construct & Evaluative, framing, and attribution signal & Source and claim structure & ``How'' coverage evaluates vs.\ ``what'' coverage contains \\
+Unit & Article/paragraph scores and attribution flags & Span-level extracted instances & Cross-layer triangulation \\
+Output & Continuous indices plus validated indicators & Discrete counts and rates & Mechanism mapping for score differences \\
+Strength & High comparability and statistical power & Source-grounded, auditable outputs & Convergence strengthens interpretation \\
+Limitation & Can obscure specific mechanisms & Depends on schema and calibration choices & Divergence is diagnostically informative \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The NLP methods characterize how coverage evaluates and frames prosecutors, while langextract identifies the structural content through which that coverage is built. When both layers converge, meaning when the excess of prosecutor-attributed harm claims (Section~\ref{sec:structural_results}) aligns with the excess of loaded negative language detected in the bias-indicator pilot (Appendix~\ref{app:bias}), the evidence is stronger than either method alone. When they diverge, as when the overall bias-indicator result is null (Appendix~\ref{app:bias}) despite significant stance and keyword effects (Section~4), the divergence reveals that the differential operates through aggregate framing mechanisms rather than discrete journalistic violations. Main-text structural results appear in Section~\ref{sec:structural_results}; full extraction protocol details remain in Appendices~\ref{app:extraction}--\ref{app:bias}.
 
 \subsection{Statistical Approach}
 \label{sec:methods}
 
-I employ six analytical strategies, applied both to a weighted composite and to each method individually: (1)~group-level comparison (Welch's $t$-test, Mann--Whitney $U$, Cohen's $d$, Cliff's delta, bootstrap 95\% CIs); (2)~same-county paired comparisons (Boudin vs.\ Jenkins in San Francisco; Price vs.\ O'Malley in Alameda); (3)~OLS regression of bias score on prosecutor ideology, controlling for county, year, and article length, with cluster-robust standard errors by publication; (4)~framing differential analysis (chi-square tests on dominant frame frequencies by prosecutor type); (5)~interrupted time series and quarterly temporal heterogeneity analysis comparing coverage before and after prosecutor transitions; and (6)~TOST equivalence testing \citep{lakens2017} with an equivalence bound of $d = 0.2$. The $d = 0.2$ bound corresponds to Cohen's definition of a ``small'' effect and is standard in equivalence testing applications. Crucially, in a large-$N$ study ($n > 13{,}000$ articles) trivially small effects achieve statistical significance, so the TOST serves as a meaningful practical check: an equivalence result ($p = .007$) indicates the composite effect is not only small by conventional standards but falls within a range generally considered substantively negligible. The per-method analyses are critical: by running each test separately for stance, sentiment, keywords, and document tone, I can identify \emph{which dimensions} of coverage differ by ideology rather than relying on a composite that may average opposing signals to zero. Throughout, $p$-values below $.001$ are reported as $p < .001$; exponential notation (e.g., $p < 10^{-127}$) is used selectively where the extreme magnitude is itself informative.
+I employ six analytical strategies: (1)~group-level comparison (Welch's $t$-test, Mann--Whitney $U$, Cohen's $d$, Cliff's delta, bootstrap 95\% CIs); (2)~same-county paired comparisons (Boudin vs.\ Jenkins in San Francisco; Price vs.\ O'Malley in Alameda); (3)~OLS regression of bias score on prosecutor ideology, controlling for county, year, and article length, with cluster-robust standard errors by publication; (4)~framing differential analysis (chi-square tests on dominant frame frequencies by prosecutor type); (5)~segmented interrupted time-series models on monthly county-level outcomes around prosecutor transitions, estimating immediate level shifts (\texttt{post}) and post-transition slope changes (\texttt{time\_after}) with HAC-robust inference, complemented by quarterly heterogeneity summaries; and (6)~TOST equivalence testing \citep{lakens2017} with an equivalence bound of $d = 0.2$. Analyses (1), (2), (3), and (5) are reported for the composite and for each A--D component, while (4) is framing-specific. Prosecutor-attributed theme detection uses its own effect-size and prevalence tests, reported in the dedicated theme-attribution subsection.
+
+The $d = 0.2$ bound corresponds to Cohen's definition of a ``small'' effect and is standard in equivalence testing applications. Crucially, in a large-$N$ study ($n > 13{,}000$ articles) trivially small effects achieve statistical significance, so the TOST serves as a meaningful practical check: an equivalence result ($p = .007$) indicates the composite effect is not only small by conventional standards but falls within a range generally considered substantively negligible. The per-method analyses are critical: by running each test separately for stance, sentiment, keywords, and document tone, I can identify \emph{which dimensions} of coverage differ by ideology rather than relying on a composite that may average opposing signals to zero. Throughout, $p$-values below $.001$ are reported as $p < .001$; exponential notation (e.g., $p < 10^{-127}$) is used selectively where the extreme magnitude is itself informative.
 
 
 % ════════════════════════════════════════════════════════════════════════
@@ -187,7 +213,7 @@ The central finding of this study is that ``media bias'' toward prosecutors is n
   \item \textbf{Document-level sentiment (D)} shows a small reversed effect ($d = 0.047$, $p = .008$): articles about traditional prosecutors are slightly \emph{more} negative in overall tone, reflecting the inherent negativity of crime reporting rather than prosecutor-specific bias.
 \end{itemize}
 
-The divergence between stance ($d = -0.341$) and sentiment ($d = 0.037$) is the study's key conceptual finding: media coverage of progressive prosecutors maintains a neutral emotional tone while adopting a critical evaluative stance. The press covers progressive prosecutors in the same emotional register as their traditional counterparts but evaluates their performance more critically. Figure~\ref{fig:methodcomp} visualizes this tone--evaluation divergence at the article level.
+The divergence between stance ($d = -0.341$) and sentiment ($d = 0.037$) is the study's key conceptual finding: media coverage of progressive prosecutors maintains a neutral emotional tone while adopting a critical evaluative stance. The press covers progressive prosecutors in the same emotional register as their traditional counterparts but evaluates their performance more critically. A diagnostic visualization of this tone--evaluation split is reported in Appendix~\ref{app:diagnostics}.
 
 This pattern has a direct methodological implication: studies relying solely on sentiment analysis would conclude that media treatment of prosecutors is equivalent. The differential emerges only when measurement captures evaluative framing, a dimension invisible to emotional tone detection.
 
@@ -196,13 +222,6 @@ This pattern has a direct methodological implication: studies relying solely on 
   \includegraphics[width=0.85\textwidth]{06_forest_plot.png}
   \caption{Effect size forest plot with 95\% bootstrap confidence intervals. The green band marks the negligible effect zone ($|d| < 0.2$). Results are grouped by analysis type: overall, paired-county, per-method, and theme attribution. Theme attribution ($d = -0.43$) is the study's largest effect.}
   \label{fig:forest}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.95\textwidth]{10_method_comparison.png}
-  \caption{Tone--evaluation divergence at the article level. Central panel: KDE contour plot of Method A (aspect sentiment) vs.\ Method B (stance classification) scores for progressive (red) and traditional (blue) prosecutors. The horizontal separation in stance contrasts with the overlapping sentiment distributions, confirming that media coverage differs in evaluative framing rather than emotional tone.}
-  \label{fig:methodcomp}
 \end{figure}
 
 \subsection{Same-County Paired Comparisons by Method}
@@ -251,25 +270,7 @@ Figure~\ref{fig:perprosecutor} displays per-prosecutor mean composite scores wit
 
 \subsection{Regression Analysis by Method}
 
-To test whether each bias dimension survives controls for county, year, article length, and publication clustering, I estimate separate OLS regressions for each method (Figure~\ref{fig:methodreg}):
-
-\begin{table}[ht]
-\centering
-\caption{Per-method OLS regressions: progressive prosecutor coefficient with cluster-robust SEs.}
-\label{tab:methodreg}
-\begin{tabular}{lrrrrr}
-\toprule
-Method & $\beta$ & $SE$ & $p$ & 95\% CI & $R^2$ \\
-\midrule
-B: Stance           & $\mathbf{-0.132}$ & 0.030 & $< .001$ & $[-0.190, -0.074]$ & .071 \\
-C: Keywords          & $\mathbf{-0.011}$ & 0.002 & $< .001$ & $[-0.015, -0.007]$ & .053 \\
-A: Aspect sentiment  & $0.008$           & 0.016 & $.618$   & $[-0.024, 0.040]$  & .008 \\
-D: Document sentiment & $0.017$          & 0.014 & $.219$   & $[-0.010, 0.044]$  & .006 \\
-\midrule
-Composite            & $-0.022$          & 0.013 & $.089$   & $[-0.047, 0.003]$  & .022 \\
-\bottomrule
-\end{tabular}
-\end{table}
+To test whether each bias dimension survives controls for county, year, article length, and publication clustering, I estimate separate OLS regressions for each method (Figure~\ref{fig:methodreg}; full coefficient table in Appendix~\ref{app:diagnostics}).
 
 Stance classification and keyword analysis, the evaluative and thematic dimensions, both show significant progressive coefficients that survive all controls. Aspect sentiment and document sentiment do not. The composite regression falls to non-significance ($p = .089$) precisely because it averages the strong evaluative signal with the null tonal signal. Running regressions per method resolves this: evaluative bias is robust to controls; tonal bias does not exist.
 
@@ -278,6 +279,43 @@ Stance classification and keyword analysis, the evaluative and thematic dimensio
   \includegraphics[width=0.85\textwidth]{16_per_method_regression.png}
   \caption{Per-method OLS regression: progressive prosecutor coefficient with 95\% cluster-robust CIs. Stance and keyword methods survive controls; sentiment methods do not.}
   \label{fig:methodreg}
+\end{figure}
+
+\subsection{Temporal Dynamics by Method}
+
+Per-method temporal analysis combines segmented interrupted time-series modeling with quarterly decomposition to test whether the evaluative bias identified above is stable or event-driven (Figure~\ref{fig:methodtemporal}).
+
+\emph{Segmented interrupted time series.} Monthly segmented models estimate transition-date level changes and post-transition slope changes for each outcome (Appendix~\ref{app:segmented_its}, Table~\ref{tab:segmented_its}, Figure~\ref{fig:segmented_its}). In San Francisco, the composite shows no immediate level break but a positive post-transition slope, consistent with gradual movement toward less negative coverage after the Boudin-to-Jenkins transition. In Alameda, the composite and stance outcomes show immediate negative level shifts at the O'Malley-to-Price transition with little compensating slope change, consistent with a step increase in critical evaluative coverage. Across transitions, evaluative measures (especially stance, then keywords) carry the temporal signal, whereas sentiment measures remain weak and inconsistent.
+
+\emph{Quarterly heterogeneity.} Figure~\ref{fig:methodtemporal} decomposes the temporal patterns of each method across 21 quarters. Stance classification ($SD = 0.32$, range $[-0.66, +0.30]$) and keyword analysis ($SD = 0.35$, range $[-0.94, +0.44]$) show dramatic quarterly variation, with the deepest effects coinciding with the Boudin recall (2021Q4--2022Q2) and the Price recall movement (2023Q2--Q3). Aspect sentiment ($SD = 0.28$, range $[-0.30, +0.75]$) and document sentiment ($SD = 0.22$, range $[-0.15, +0.69]$) show less variation and no systematic pattern tied to political events. The monthly time series (Figure~\ref{fig:timeseries}) overlays a coverage-volume-weighted three-month rolling average alongside the raw monthly means; the weighted and unweighted trends are nearly identical, confirming that the temporal patterns are not artifacts of high-variance low-coverage months.
+
+This per-method temporal decomposition resolves a key ambiguity in the aggregate analysis. The composite quarterly $d$ (range $[-0.39, +0.84]$, $SD = 0.37$) appears to show dramatic cyclical variation, but this aggregate masks the distinct temporal signatures of its component methods. Evaluative bias (stance, keywords) is event-driven, surging during recall campaigns and subsiding between them. Tonal bias (sentiment) is absent throughout. The aggregate temporal variation is driven entirely by the evaluative dimensions.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{17_per_method_temporal.png}
+  \caption{Per-method quarterly Cohen's $d$ (progressive vs.\ traditional) with 95\% bootstrap CIs. The green band marks the negligible zone ($|d| < 0.2$). Dashed lines mark prosecutor transitions. Stance and keyword methods show event-driven variation; sentiment methods remain flat throughout.}
+  \label{fig:methodtemporal}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{04_time_series.png}
+  \caption{Monthly mean composite scores for San Francisco (top) and Alameda County (bottom), 2019--2024. Faint dots and lines show raw monthly means; thick lines show coverage-volume-weighted three-month rolling averages. Open circles mark months with fewer than five articles. Shaded bands indicate prosecutor tenures; red = progressive, blue = traditional.}
+  \label{fig:timeseries}
+\end{figure}
+
+\subsection{Composite Summary}
+
+The preceding A--D analyses constitute the study's primary findings and demonstrate that evaluative and tonal dimensions of coverage diverge sharply. The composite below is reported immediately afterward because it is constructed only from Methods A--D and serves as a summary measure for overall comparison and time-series visualization, not as the principal test of differential treatment.
+
+When the four methods are combined into a weighted composite (weights: 0.35 sentiment, 0.30 stance, 0.20 keywords, 0.15 document), the overall group comparison yields $d = -0.157$ ($p < .001$, 95\% bootstrap CI $[-0.036, -0.023]$), with a TOST equivalence test confirming the effect falls within conventional equivalence bounds ($p = .007$ at $d = 0.2$; see Section~\ref{sec:methods} for bound justification). As reported in Section~3.3, the composite effect is negative and significant under all six alternative weighting specifications tested ($d$ ranging from $-0.08$ to $-0.39$); the current weights produce one of the most conservative estimates. This composite serves as a proxy for the aggregate reader experience: a reader does not consume ``stance'' and ``sentiment'' as separate channels but is exposed to both the emotional tone and the evaluative framing of an article simultaneously. The composite approximates this net impression and provides a single dependent variable for the time series and overall comparison (Figure~\ref{fig:violin}). However, the per-method results above demonstrate that this aggregate figure obscures the distinct mechanisms at play: it averages a large evaluative effect with a null tonal effect, producing a small overall number that understates the stance differential and overstates the sentiment contribution.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.75\textwidth]{01_violin_by_type.png}
+  \caption{Aggregate tone-evaluation index distributions by prosecutor ideology. Violin plots show the full distribution; inner box plots show the interquartile range. Negative scores indicate more negative coverage.}
+  \label{fig:violin}
 \end{figure}
 
 \subsection{Framing Analysis}
@@ -312,33 +350,9 @@ These framing patterns are consistent with the stance classification finding: th
   \label{fig:heatmap}
 \end{figure}
 
-\subsection{Temporal Dynamics by Method}
-
-Per-method temporal analysis provides the most direct test of whether the evaluative bias identified above is stable or event-driven (Figure~\ref{fig:methodtemporal}).
-
-\emph{Interrupted time series.} At the San Francisco transition (Boudin to Jenkins, July 2022), no method shows a substantively significant shift: stance ($d = -0.050$, $p = .040$), keywords ($d = 0.029$, $p = .182$), sentiment ($d = 0.047$, $p = .047$), and document ($d = 0.052$, $p = .016$) all produce negligible effects. The general negativity of SF DA coverage persists regardless of who holds office. At the Alameda transition (O'Malley to Price, January 2023), however, the per-method pattern is stark: stance ($d = 0.433$, $p < .001$) and keywords ($d = 0.358$, $p < .001$) show large shifts toward more critical coverage of Price, while sentiment ($d = 0.043$, $p = .385$) and document tone ($d = -0.031$, $p = .468$) show no change whatsoever. The evaluative dimensions respond to the prosecutor transition; the tonal dimensions do not.
-
-\emph{Quarterly heterogeneity.} Figure~\ref{fig:methodtemporal} decomposes the temporal patterns of each method across 21 quarters. Stance classification ($SD = 0.32$, range $[-0.66, +0.30]$) and keyword analysis ($SD = 0.35$, range $[-0.94, +0.44]$) show dramatic quarterly variation, with the deepest effects coinciding with the Boudin recall (2021Q4--2022Q2) and the Price recall movement (2023Q2--Q3). Aspect sentiment ($SD = 0.28$, range $[-0.30, +0.75]$) and document sentiment ($SD = 0.22$, range $[-0.15, +0.69]$) show less variation and no systematic pattern tied to political events. The monthly time series (Figure~\ref{fig:timeseries}) overlays a coverage-volume-weighted three-month rolling average alongside the raw monthly means; the weighted and unweighted trends are nearly identical, confirming that the temporal patterns are not artifacts of high-variance low-coverage months.
-
-This per-method temporal decomposition resolves a key ambiguity in the aggregate analysis. The composite quarterly $d$ (range $[-0.39, +0.84]$, $SD = 0.37$) appears to show dramatic cyclical variation, but this aggregate masks the distinct temporal signatures of its component methods. Evaluative bias (stance, keywords) is event-driven, surging during recall campaigns and subsiding between them. Tonal bias (sentiment) is absent throughout. The aggregate temporal variation is driven entirely by the evaluative dimensions.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.95\textwidth]{17_per_method_temporal.png}
-  \caption{Per-method quarterly Cohen's $d$ (progressive vs.\ traditional) with 95\% bootstrap CIs. The green band marks the negligible zone ($|d| < 0.2$). Dashed lines mark prosecutor transitions. Stance and keyword methods show event-driven variation; sentiment methods remain flat throughout.}
-  \label{fig:methodtemporal}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.95\textwidth]{04_time_series.png}
-  \caption{Monthly mean composite scores for San Francisco (top) and Alameda County (bottom), 2019--2024. Faint dots and lines show raw monthly means; thick lines show coverage-volume-weighted three-month rolling averages. Open circles mark months with fewer than five articles. Shaded bands indicate prosecutor tenures; red = progressive, blue = traditional.}
-  \label{fig:timeseries}
-\end{figure}
-
 \subsection{Theme Prevalence and Prosecutor-Attributed Themes}
 
-Keyword theme analysis (Method~C; Figure~\ref{fig:themes}) measures term density within three-sentence windows around prosecutor mentions. By this measure, recall-related language dominates progressive prosecutor coverage (9.8\% vs.\ 2.7\% for traditional), driven overwhelmingly by Boudin's 2022 recall campaign. After recall, the most prevalent anti-prosecutor themes for progressive coverage are soft-on-crime (1.6\% vs.\ 0.7\%), crime-rising (1.5\% vs.\ 0.3\%), and public-safety-failure (1.2\% vs.\ 0.3\%). The ``releasing criminals'' theme is the only category where traditional prosecutors receive higher prevalence (5.5\% vs.\ 4.1\%), likely reflecting routine bail and parole coverage rather than ideologically targeted framing.
+This subsection reports two complementary theme analyses. \emph{Part A (Method~C descriptive prevalence):} Figure~\ref{fig:themes} presents keyword prevalence from the Method~C dictionaries, measured as local term density within three-sentence windows around prosecutor mentions. By this measure, recall-related language dominates progressive prosecutor coverage (9.8\% vs.\ 2.7\% for traditional), driven overwhelmingly by Boudin's 2022 recall campaign. After recall, the most prevalent anti-prosecutor themes for progressive coverage are soft-on-crime (1.6\% vs.\ 0.7\%), crime-rising (1.5\% vs.\ 0.3\%), and public-safety-failure (1.2\% vs.\ 0.3\%). The ``releasing criminals'' theme is the only category where traditional prosecutors receive higher prevalence (5.5\% vs.\ 4.1\%), likely reflecting routine bail and parole coverage rather than ideologically targeted framing.
 
 \begin{figure}[H]
   \centering
@@ -347,7 +361,7 @@ Keyword theme analysis (Method~C; Figure~\ref{fig:themes}) measures term density
   \label{fig:themes}
 \end{figure}
 
-The multi-method theme attribution analysis, which requires themes to be explicitly linked to prosecutors through compound regex patterns rather than simple keyword proximity, provides the strongest evidence of differential thematic coverage. Progressive prosecutors receive significantly higher theme attribution scores ($M = 1.80$, $SD = 3.07$) than traditional prosecutors ($M = 0.74$, $SD = 1.71$), $t(10{,}765) = 24.43$, $p < 10^{-127}$, $d = -0.43$ (signed to match the composite convention: negative indicates more anti-prosecutor coverage), 95\% bootstrap CI for the mean difference $[0.98, 1.15]$. This medium effect size is the study's largest, exceeding the stance classification effect ($d = -0.341$) and confirming that the evaluative differential operates through the explicit attribution of critical narratives to specific prosecutors.
+\emph{Part B (prosecutor-attributed theme model):} The multi-method prosecutor-attributed theme analysis requires themes to be explicitly linked to prosecutors through compound regex patterns rather than simple keyword proximity. This stricter attribution measure provides the strongest evidence of differential thematic coverage. Progressive prosecutors receive significantly higher theme attribution scores ($M = 1.80$, $SD = 3.07$) than traditional prosecutors ($M = 0.74$, $SD = 1.71$), $t(10{,}765) = 24.43$, $p < 10^{-127}$, $d = -0.43$ (signed to match the composite convention: negative indicates more anti-prosecutor coverage), 95\% bootstrap CI for the mean difference $[0.98, 1.15]$. This medium effect size is the study's largest, exceeding the stance classification effect ($d = -0.341$) and confirming that the evaluative differential operates through the explicit attribution of critical narratives to specific prosecutors.
 
 Per-theme analysis (Figure~\ref{fig:themeattr}) uses a different metric: the percentage of articles in which \emph{any} of the four attribution methods flags the theme, producing higher prevalence rates than the keyword-proximity measure above. By this article-level flag, recall-related themes appear 4.02 times more often in progressive prosecutor coverage (19.5\% vs.\ 4.8\%, $\chi^2 = 641.9$, $p < 10^{-141}$, Cram\'{e}r's $V = 0.22$). Crime-rising themes appear 1.72 times more often (21.0\% vs.\ 12.2\%, $\chi^2 = 178.7$, $p < 10^{-40}$), and soft-on-crime framing is 3.74 times more prevalent ($\chi^2 = 68.5$, $p < 10^{-16}$). The paired county theme comparisons confirm (reported in the standard progressive-minus-traditional direction, where positive $d$ indicates higher theme attribution for the progressive prosecutor): in San Francisco, Boudin scores higher than Jenkins ($d = 0.28$, $p < .001$), and in Alameda, Price scores higher than O'Malley ($d = 0.58$, $p < .001$), the study's largest within-county effect.
 
@@ -358,53 +372,54 @@ Per-theme analysis (Figure~\ref{fig:themeattr}) uses a different metric: the per
   \label{fig:themeattr}
 \end{figure}
 
+Multi-method validation shows that 41.4\% of articles with any detected theme trigger two or more independent detection methods, confirming convergent evidence rather than single-method artifacts (Appendix~\ref{app:diagnostics}).
+
+\subsection{Structural Source Ecology and Claims (Full-Corpus LLM Extraction)}
+\label{sec:structural_results}
+
+After establishing evaluative differentials with NLP scoring, this section identifies the structural content patterns that co-occur with those differentials. Source types differ strongly by prosecutor ideology ($\chi^2(\SourceChiSqDf) = \SourceChiSq$, $p \SourceChiSqP$), with progressive prosecutor coverage drawing disproportionately on advocacy voices (\AdvocacyRatio$\times$), journalist commentary (\JournalistRatio$\times$), politicians (\PoliticianRatio$\times$), and experts (\ExpertRatio$\times$) relative to traditional coverage.
+
+\begin{table}[ht]
+\centering
+\caption{Source stance per article by prosecutor ideology (full extraction, $n=\NAttributedTotal$).}
+\label{tab:sourcestance}
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Source Stance & Prog./art. & Trad./art. & $d$ & Ratio \\
+\midrule
+Critical    & \ProgCriticalPerArticle & \TradCriticalPerArticle & $0.14$ & \CriticalRateRatio$\times$ \\
+Supportive  & \ProgSupportivePerArticle & \TradSupportivePerArticle & $0.22$ & \SupportiveRateRatio$\times$ \\
+Neutral     & \ProgNeutralPerArticle & \TradNeutralPerArticle & $-0.20$ & \NeutralRateRatio$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Progressive prosecutors attract both more critical and more supportive source attributions per article, while traditional prosecutors receive more neutral sourcing. The largest absolute source-rate difference remains prosecutor self-quotation (\ProgSelfQuoteRate\ per article for progressives vs.\ \TradSelfQuoteRate\ for traditional), indicating that traditional coverage is more often anchored in the officeholder's own framing while progressive coverage draws more external contestation.
+
+Causal attributions show the same directional asymmetry: ``prosecutor caused harm'' appears at \ProgHarmPerArticle\ per progressive article versus \TradHarmPerArticle\ per traditional article (\HarmRatio$\times$), while ``prosecutor helped'' also appears slightly more often for progressives (\ProgHelpedPerArticle\ vs.\ \TradHelpedPerArticle, \HelpedRatio$\times$). For claim content, policy and performance criticism show the largest differentials (policy: \ProgPolicyClaimRate\ vs.\ \TradPolicyClaimRate\ per article, \PolicyClaimRatio$\times$; performance: \ProgPerformanceClaimRate\ vs.\ \TradPerformanceClaimRate, \PerformanceClaimRatio$\times$), while character and competence claims are comparatively symmetric (\CharacterClaimRatio$\times$ and \CompetenceClaimRatio$\times$).
+
 \begin{figure}[H]
   \centering
-  \includegraphics[width=\textwidth]{13_theme_attribution_heatmap.png}
-  \caption{Theme prevalence (\%) by individual prosecutor. Rows are colored by ideology (red = progressive, blue = traditional). Darker cells indicate higher prevalence.}
-  \label{fig:themeheat}
+  \includegraphics[width=0.85\textwidth]{08_source_type_distribution.png}
+  \caption{Source type distribution by prosecutor ideology from LLM structural extraction ($n=\NAttributedTotal$ articles). Bars show proportions of total sources within each group; annotations show raw counts. The largest relative differentials are in advocacy groups (\AdvocacyRatio$\times$), journalist commentary (\JournalistRatio$\times$), politicians (\PoliticianRatio$\times$), and expert sources (\ExpertRatio$\times$).}
+  \label{fig:sourcetypes}
 \end{figure}
 
-Multi-method validation (Figure~\ref{fig:themeagree}) shows that 41.4\% of articles with any detected theme trigger two or more independent detection methods, confirming convergent evidence rather than single-method artifacts.
+These structural patterns are consistent with the evaluative-framing findings but remain descriptive rather than causal.
 
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.85\textwidth]{14_theme_method_agreement.png}
-  \caption{Distribution of detection method agreement by prosecutor type. Segments show the proportion of articles detected by 0--4 independent methods.}
-  \label{fig:themeagree}
-\end{figure}
-
-\subsection{Composite Summary}
-
-The preceding per-method analyses (Sections~4.1--4.6) constitute the study's primary findings and demonstrate that evaluative and tonal dimensions of coverage diverge sharply. The composite below serves as a summary measure for time-series visualization and overall comparison, not as the principal test of differential treatment.
-
-When the four methods are combined into a weighted composite (weights: 0.35 sentiment, 0.30 stance, 0.20 keywords, 0.15 document), the overall group comparison yields $d = -0.157$ ($p < .001$, 95\% bootstrap CI $[-0.036, -0.023]$), with a TOST equivalence test confirming the effect falls within conventional equivalence bounds ($p = .007$ at $d = 0.2$; see Section~\ref{sec:methods} for bound justification). Robustness checks across six alternative weighting specifications (Section~\ref{sec:methods}) confirm the composite effect is negative and significant under every scheme; the current weights produce one of the most conservative estimates. This composite serves as a proxy for the aggregate reader experience: a reader does not consume ``stance'' and ``sentiment'' as separate channels but is exposed to both the emotional tone and the evaluative framing of an article simultaneously. The composite approximates this net impression and provides a single dependent variable for the time series and overall comparison (Figure~\ref{fig:violin}). However, the per-method results above demonstrate that this aggregate figure obscures the distinct mechanisms at play: it averages a large evaluative effect with a null tonal effect, producing a small overall number that understates the stance differential and overstates the sentiment contribution.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.75\textwidth]{01_violin_by_type.png}
-  \caption{Aggregate tone-evaluation index distributions by prosecutor ideology. Violin plots show the full distribution; inner box plots show the interquartile range. Negative scores indicate more negative coverage.}
-  \label{fig:violin}
-\end{figure}
-
-\subsection{Sensitivity to Traditional Baseline Composition}
-
-Brooke Jenkins accounts for more than half of the traditional baseline ($n = 3{,}207$ of $6{,}352$ traditional articles). As documented in Appendix~\ref{app:bias}, Jenkins's coverage is atypically negative for a traditional prosecutor: her mean composite score ($-0.016$) sits between the progressive mean ($-0.032$) and the other traditional prosecutors' mean ($+0.012$), and she differs significantly from O'Malley and Wagstaffe ($d = -0.15$, $p < 10^{-9}$). This is consistent with the politically charged nature of her appointment as Boudin's replacement during the recall.
-
-To assess whether this anomalous baseline composition suppresses the between-group effect, I recomputed all per-method comparisons excluding Jenkins. The composite effect increases from $d = -0.157$ to $d = -0.230$ ($p < 10^{-25}$); stance increases from $d = -0.341$ to $d = -0.466$ ($p < 10^{-75}$); keywords from $d = -0.218$ to $d = -0.313$ ($p < 10^{-46}$). The two sentiment measures remain non-significant. The full-sample estimates reported throughout this paper are therefore conservative: the traditional baseline includes a prosecutor whose coverage profile partially resembles that of the progressive group, attenuating the observed differential.
-
-A second robustness check excludes all articles attributed through the generic fallback rule (no named prosecutor mention, generic DA reference, attribution by date + publication county). Under this restriction, the composite difference increases from $d = -0.157$ to $d = -0.311$ ($p < 10^{-34}$), indicating that fallback attributions attenuate rather than create the observed group differential (Appendix~\ref{app:fallback_sensitivity}).
+Robustness checks point in the same direction: excluding Brooke Jenkins from the traditional baseline and excluding fallback-attributed articles both increase effect magnitudes, indicating attenuation rather than artifact in the full-sample estimates (Appendices~\ref{app:baseline_sensitivity} and~\ref{app:fallback_sensitivity}).
 
 % ════════════════════════════════════════════════════════════════════════
 \section{Discussion}
 
 This study provides the first large-scale, multi-method analysis of media coverage of prosecutors by ideological orientation. Three principal findings emerge.
 
-\textbf{First, media bias toward prosecutors is multi-dimensional, and the dimensions diverge.} The study's central contribution is demonstrating that what is commonly treated as a unitary construct, ``media bias,'' decomposes into at least two independent dimensions: evaluative framing and emotional tone. Stance classification detects a medium effect ($d = -0.341$) that survives regression controls ($\beta = -0.132$, $p < .001$); sentiment analysis detects no effect ($d = 0.037$, $p = .058$; $\beta = 0.008$, $p = .618$ after controls). This divergence is not a methodological artifact but a substantive finding: the media covers progressive prosecutors in the same emotional register as their traditional counterparts but evaluates their performance more critically. This pattern aligns with \citeauthor{entman1993}'s (\citeyear{entman1993}) observation that framing operates through selection and salience rather than through overt evaluative language, and with prior scholarship documenting how structural accumulation of story selection, source amplification, and contextual juxtaposition creates critical impressions without lexical negativity \citep{beale2006,surette2015}. The prosecutor-attributed theme analysis provides the most direct evidence of this mechanism: when themes must be explicitly linked to prosecutors through compound linguistic patterns, the effect size increases to $d = -0.43$, confirming that the evaluative differential operates through the \emph{attribution} of critical narratives rather than through diffuse tonal differences.
+\textbf{First, media bias toward prosecutors is multi-dimensional, and the dimensions diverge.} The study's central contribution is demonstrating that what is commonly treated as a unitary construct, ``media bias,'' decomposes into at least two independent dimensions: evaluative framing and emotional tone. Stance classification detects a medium effect ($d = -0.341$) that survives regression controls ($\beta = -0.132$, $p < .001$); sentiment analysis detects no effect ($d = 0.037$, $p = .058$; $\beta = 0.008$, $p = .618$ after controls). This divergence is not a methodological artifact but a substantive finding: the media covers progressive prosecutors in the same emotional register as their traditional counterparts but evaluates their performance more critically. This pattern aligns with \citeauthor{entman1993}'s (\citeyear{entman1993}) observation that framing operates through selection and salience rather than through overt evaluative language, and with prior scholarship documenting how structural accumulation of story selection, source amplification, and contextual juxtaposition creates critical impressions without lexical negativity \citep{beale2006,surette2015}. The prosecutor-attributed theme analysis provides the most direct evidence of this mechanism: when themes must be explicitly linked to prosecutors through compound linguistic patterns, the effect size increases to $d = -0.43$, confirming that the evaluative differential operates through the \emph{attribution} of critical narratives rather than through diffuse tonal differences. The full-corpus structural extraction converges with this result: progressive prosecutor coverage is organized around more externally contestatory source ecologies and more harm-attribution content, while traditional coverage relies more heavily on neutral self-quotation. Together, the score-based and extraction-based layers support a complementary interpretation of differential coverage while remaining descriptive rather than causal.
 
 The Alameda County comparison illustrates why decomposition matters. The composite paired comparison yields a non-significant $d = -0.048$ ($p = .295$), an apparent null. However, per-method analysis reveals that stance ($d = -0.275$, $p < .001$) and keywords ($d = -0.373$, $p < .001$) detect substantial differential treatment while sentiment pulls in the opposite direction ($d = 0.082$, $d = 0.124$). The composite averages these opposing signals to near-zero. A single-index approach would miss the differential treatment entirely.
 
-\textbf{Second, evaluative bias is event-driven rather than stable.} The per-method temporal analysis (Figure~\ref{fig:methodtemporal}) resolves a key ambiguity. Stance classification and keyword analysis show dramatic quarterly variation ($SD = 0.32$ and $0.35$, respectively), with the deepest effects coinciding with the Boudin recall campaign (2021Q4--2022Q2) and the Price recall movement (2023Q2--Q3). Aspect sentiment and document sentiment show less variation ($SD = 0.28$ and $0.22$) and no systematic pattern tied to political events. The aggregate temporal heterogeneity (composite range $d = -0.39$ to $+0.84$, $SD = 0.37$) is driven entirely by the evaluative dimensions; tonal bias is absent throughout. This finding suggests that recall campaigns and politically charged events amplify evaluative scrutiny of progressive prosecutors, rather than a stable editorial disposition against them. Accordingly, the term ``bias'' as used throughout this paper denotes differential evaluative responsiveness to political events, not a stable editorial preference: the finding is not that newsrooms maintain a constant anti-progressive disposition, but that politically charged events trigger evaluative scrutiny of reform prosecutors that has no tonal counterpart in coverage of traditional prosecutors facing comparable circumstances.
+\textbf{Second, evaluative bias is event-driven rather than stable.} The per-method temporal analysis (Figure~\ref{fig:methodtemporal}) resolves a key ambiguity. Segmented ITS estimates around transition dates (Appendix~\ref{app:segmented_its}) reinforce the same pattern: limited transition effects in San Francisco but clear immediate evaluative shifts in Alameda, concentrated in stance and keyword outcomes rather than sentiment. Stance classification and keyword analysis show dramatic quarterly variation ($SD = 0.32$ and $0.35$, respectively), with the deepest effects coinciding with the Boudin recall campaign (2021Q4--2022Q2) and the Price recall movement (2023Q2--Q3). Aspect sentiment and document sentiment show less variation ($SD = 0.28$ and $0.22$) and no systematic pattern tied to political events. The aggregate temporal heterogeneity (composite range $d = -0.39$ to $+0.84$, $SD = 0.37$) is driven entirely by the evaluative dimensions; tonal bias is absent throughout. This finding suggests that recall campaigns and politically charged events amplify evaluative scrutiny of progressive prosecutors, rather than a stable editorial disposition against them. Accordingly, the term ``bias'' as used throughout this paper denotes differential evaluative responsiveness to political events, not a stable editorial preference: the finding is not that newsrooms maintain a constant anti-progressive disposition, but that politically charged events trigger evaluative scrutiny of reform prosecutors that has no tonal counterpart in coverage of traditional prosecutors facing comparable circumstances.
 
 \textbf{Third, framing differences are more pronounced and potentially more consequential than any tonal measure.} The Cram\'{e}r's $V$ of 0.225 for dominant frame distributions, a medium effect, indicates that progressive and traditional prosecutors are covered through substantively different narrative lenses. Progressive prosecutors are held to an accountability standard (40\% of articles vs.\ 23\%) and viewed through an ideological lens (4\% vs.\ 1\%), while traditional prosecutors receive more human-interest framing (36\% vs.\ 21\%). These framing choices may matter more than any aggregate tone measure: they determine whether voters receive performance evaluations or human-interest stories about structurally similar officeholders.
 
@@ -433,11 +448,11 @@ Future work should expand the corpus to include other reform prosecutors nationa
 \section{LLM-Based Structural Content Extraction}
 \label{app:extraction}
 
-The multi-method pipeline described in Section~3 measures the \emph{tone} and \emph{framing} of coverage but does not directly examine the structural building blocks of articles: who is quoted, what claims are made, and with what evidence. Understanding these structural features is essential for explaining \emph{why} tone differs across prosecutor types, yet manual content coding at the scale of 12,953 articles is prohibitively expensive. This appendix reports results from a large-scale LLM-based structured extraction that decomposes article content into discrete, categorized elements.
+The multi-method analyses reported in Section~4 measure evaluative direction, narrative framing, and prosecutor-attributed themes but do not directly enumerate the structural building blocks of articles: who is quoted, what claims are made, and with what evidence. Understanding these structural features is essential for explaining \emph{why} evaluative coverage differs across prosecutor types, yet manual content coding at the scale of $n=\NAttributedTotal$ articles is prohibitively expensive. This appendix reports extraction protocol details and extended tables for the full-corpus LLM-based structured extraction.
 
 \subsection*{Method}
 
-I use Google's langextract library, which leverages Gemini 2.5 Flash to extract structured information from text with source grounding: every extraction is anchored to a specific span in the original article. The model was prompted with a detailed extraction schema and three diverse few-shot examples (one critical of a progressive prosecutor, one neutral about a traditional prosecutor, one with mixed coverage) to calibrate extraction behavior across ideological contexts. I applied the extraction pipeline to the full corpus of 12,953 prosecutor-attributed articles (6,601 progressive, 6,352 traditional), covering all five prosecutors: Boudin ($n = 5{,}773$), Jenkins ($n = 3{,}207$), O'Malley ($n = 1{,}497$), Price ($n = 828$), and Wagstaffe ($n = 1{,}648$).
+I use Google's langextract library, which leverages Gemini 2.5 Flash to extract structured information from text with source grounding: every extraction is anchored to a specific span in the original article. The model was prompted with a detailed extraction schema and three diverse few-shot examples (one critical of a progressive prosecutor, one neutral about a traditional prosecutor, one with mixed coverage) to calibrate extraction behavior across ideological contexts. I applied the extraction pipeline to the full corpus of $\NAttributedTotal$ prosecutor-attributed articles ($\NProgAttributed$ progressive, $\NTradAttributed$ traditional), covering all five prosecutors: Boudin ($n=\NBoudin$), Jenkins ($n=\NJenkins$), O'Malley ($n=\NOmalley$), Price ($n=\NPrice$), and Wagstaffe ($n=\NWagstaffe$).
 
 \subsubsection*{Extraction prompt}
 
@@ -532,15 +547,15 @@ source\_attrib. & ``Price responded that her office has actually increased\ldots
 \end{tabular}
 \end{table}
 
-The extraction schema defines five content categories: (1)~\emph{claims against the prosecutor}, classified by type (performance, policy, character, competence) and evidence quality; (2)~\emph{source attributions}, identifying the speaker's role and stance toward the prosecutor; (3)~\emph{causal claims} linking the prosecutor's actions to outcomes; (4)~\emph{policy actions} attributed to the prosecutor; and (5)~\emph{comparisons} between the current prosecutor and predecessors or standards. The pipeline produced 135,178 total extraction instances across the 12,953 articles (mean $= 10.4$ per article).
+The extraction schema defines five content categories: (1)~\emph{claims against the prosecutor}, classified by type (performance, policy, character, competence) and evidence quality; (2)~\emph{source attributions}, identifying the speaker's role and stance toward the prosecutor; (3)~\emph{causal claims} linking the prosecutor's actions to outcomes; (4)~\emph{policy actions} attributed to the prosecutor; and (5)~\emph{comparisons} between the current prosecutor and predecessors or standards. The pipeline produced \NExtractionsTotal\ total extraction instances across \NAttributedTotal\ articles (mean $= \MeanExtractionsPerArticle$ per article).
 
 \subsection*{Results}
 
-\textbf{Source type distribution.} The types of sources quoted differ significantly between prosecutor groups ($\chi^2 = 1{,}720.3$, $p \approx 0$, $df = 9$; see Figure~\ref{fig:sourcetypes}). All comparisons are expressed as proportions of total sources within each group and as per-article rates:
+\textbf{Source type distribution.} The types of sources quoted differ significantly between prosecutor groups ($\chi^2 = \SourceChiSq$, $p \SourceChiSqP$, $df = \SourceChiSqDf$). Main-text summaries are in Section~\ref{sec:structural_results}; this table provides the full source-type breakdown.
 
 \begin{table}[ht]
 \centering
-\caption{Source type distribution by prosecutor ideology. Proportions are within-group; rates are per attributed article (progressive $n = 6{,}601$; traditional $n = 6{,}352$).}
+\caption{Source type distribution by prosecutor ideology. Proportions are within-group; rates are per attributed article (progressive $n=\NProgAttributed$; traditional $n=\NTradAttributed$).}
 \label{tab:sourcetypes}
 \small
 \begin{tabular}{lrrrrr}
@@ -561,42 +576,19 @@ Other/missing type &  1.9\% &  2.5\% & 0.12 & 0.15 & $0.8\times$ \\
 \end{tabular}
 \end{table}
 
-Coverage of progressive prosecutors features proportionally more advocacy group voices ($2.3\times$), journalist commentary ($1.5\times$), politician quotes ($1.5\times$), and expert sources ($1.4\times$ per article). Notably, traditional prosecutors receive more defense-attorney ($0.8\times$) and self-quote ($0.8\times$) sources per article, while police, victim, and community sources appear at roughly equal rates. These sourcing differentials suggest that progressive prosecutor coverage draws on a broader and more politically diverse source ecology, while traditional prosecutor coverage relies more heavily on the prosecutor's own statements and legal actors. This is consistent with the accountability and reform framing patterns documented in Section~4, and with the ``toplash'' dynamics described by \citet{goldstein2024}: the elevated presence of advocacy, politician, and expert sources around progressive prosecutors is precisely the source ecology one would expect when institutional actors mobilize media relationships to contest reform agendas. The distribution of source \emph{stance} further illuminates the sourcing asymmetry:
+Coverage of progressive prosecutors features proportionally more advocacy group voices (\AdvocacyRatio$\times$), journalist commentary (\JournalistRatio$\times$), politician quotes (\PoliticianRatio$\times$), and expert sources (\ExpertRatio$\times$ per article). Notably, traditional prosecutors receive more defense-attorney (\DefenseRateRatio$\times$) and self-quote (\SelfQuoteRateRatio$\times$) sources per article, while police, victim, and community sources appear at roughly equal rates. These sourcing differentials suggest that progressive prosecutor coverage draws on a broader and more politically diverse source ecology, while traditional prosecutor coverage relies more heavily on the prosecutor's own statements and legal actors. This is consistent with the accountability and reform framing patterns documented in Section~4, and with the ``toplash'' dynamics described by \citet{goldstein2024}: the elevated presence of advocacy, politician, and expert sources around progressive prosecutors is precisely the source ecology one would expect when institutional actors mobilize media relationships to contest reform agendas.
 
-\begin{table}[ht]
-\centering
-\caption{Source stance per article by prosecutor ideology (progressive $n = 6{,}601$; traditional $n = 6{,}352$).}
-\label{tab:sourcestance}
-\small
-\begin{tabular}{lrrrr}
-\toprule
-Source Stance & Prog./art. & Trad./art. & $d$ & $p$ \\
-\midrule
-Critical    & 1.70 & 1.28 & 0.14 & $< 10^{-15}$ \\
-Supportive  & 1.42 & 0.95 & 0.22 & $< 10^{-34}$ \\
-Neutral     & 3.16 & 3.84 & $-0.20$ & $< 10^{-29}$ \\
-\bottomrule
-\end{tabular}
-\end{table}
+Source stance details are reported in the main text (Table~\ref{tab:sourcestance}); briefly, progressive prosecutor coverage has higher critical and supportive source rates, while traditional coverage has higher neutral source rates, largely driven by self-quotes (\TradSelfQuoteRate\ vs.\ \ProgSelfQuoteRate\ per article).
 
-Progressive prosecutors attract both more critical ($d = 0.14$) and more supportive ($d = 0.22$) sources per article, while traditional prosecutors receive significantly more neutral sources ($d = -0.20$). This pattern reflects the greater political salience and controversy surrounding progressive prosecutors: their coverage generates more polarized sourcing from both sides, while traditional prosecutor coverage relies more heavily on neutral institutional voices.
+\textbf{Causal claims.} Progressive prosecutors face \HarmRatio$\times$ as many ``prosecutor caused harm'' attributions per article (\ProgHarmPerArticle\ vs.\ \TradHarmPerArticle). ``Prosecutor helped'' attributions are also \HelpedRatio$\times$ higher per article for progressives (\ProgHelpedPerArticle\ vs.\ \TradHelpedPerArticle). The asymmetric harm ratio identifies a specific structural mechanism through which progressive prosecutors receive more negative coverage: causal blame is attributed more frequently regardless of evidence quality.
 
-\textbf{Causal claims.} Progressive prosecutors face 1.7 times as many ``prosecutor caused harm'' attributions per article (0.41 vs.\ 0.24). ``Prosecutor helped'' attributions are also 1.2 times higher per article for progressives (0.15 vs.\ 0.13). The asymmetric harm ratio provides a specific structural mechanism through which progressive prosecutors receive more negative coverage.
+\textbf{Claim types.} Per article, progressive prosecutors face more claims across all categories, but the differentials are sharply asymmetric by type. Policy (\ProgPolicyClaimRate\ vs.\ \TradPolicyClaimRate, \PolicyClaimRatio$\times$) and performance (\ProgPerformanceClaimRate\ vs.\ \TradPerformanceClaimRate, \PerformanceClaimRatio$\times$) criticisms show the largest gaps, while character (\ProgCharacterClaimRate\ vs.\ \TradCharacterClaimRate, \CharacterClaimRatio$\times$) and competence (\ProgCompetenceClaimRate\ vs.\ \TradCompetenceClaimRate, \CompetenceClaimRatio$\times$) claims are relatively symmetric across ideology.
 
-\textbf{Claim types.} Per article, progressive prosecutors face more claims across all categories: policy (0.48 vs.\ 0.31, $1.6\times$), performance (0.45 vs.\ 0.31, $1.5\times$), character (0.42 vs.\ 0.36, $1.1\times$), and competence (0.31 vs.\ 0.29, $1.1\times$). The largest differentials appear for policy and performance criticisms, suggesting that progressive prosecutors are disproportionately criticized for \emph{what they do}, their decisions and policy choices, rather than for personal attributes, a pattern consistent with the accountability framing differential observed in Section~4.
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.85\textwidth]{08_source_type_distribution.png}
-  \caption{Source type distribution by prosecutor ideology from LLM structural extraction ($n = 12{,}953$ articles). Bars show proportions of total sources within each group; annotations show raw counts. The largest relative differentials are in advocacy groups ($2.3\times$), journalist commentary ($1.5\times$), politicians ($1.5\times$), and expert sources ($1.4\times$ per article).}
-  \label{fig:sourcetypes}
-\end{figure}
-
-\textbf{Per-prosecutor extraction density.} Pamela Price generates the most extraction-dense coverage (13.3 per article, $n = 828$), followed by Brooke Jenkins (10.8, $n = 3{,}207$), Chesa Boudin (10.7, $n = 5{,}773$), Nancy O'Malley (10.0, $n = 1{,}497$), and Steve Wagstaffe (7.9, $n = 1{,}648$).
+\textbf{Per-prosecutor extraction density.} Pamela Price generates the most extraction-dense coverage (13.3 per article, $n=\NPrice$), followed by Brooke Jenkins (10.8, $n=\NJenkins$), Chesa Boudin (10.7, $n=\NBoudin$), Nancy O'Malley (10.0, $n=\NOmalley$), and Steve Wagstaffe (7.9, $n=\NWagstaffe$).\footnote{One might assume that progressive-prosecutor articles are simply richer or more detailed, producing more extractable content. The density data do not support this: a traditional prosecutor (Jenkins, 10.8) produces slightly \emph{more} extractable content per article than the most-covered progressive (Boudin, 10.7), and the three middle prosecutors cluster between 10.0 and 10.8 regardless of ideology. The sourcing and claim differentials reported above reflect differences in \emph{what kind} of content articles contain, not in how much.}
 
 \subsection*{Limitations}
 
-The extraction covers the full corpus of prosecutor-attributed articles (6,601 progressive, 6,352 traditional), eliminating sampling bias as a concern. However, the LLM-based extraction itself introduces measurement uncertainty: Gemini 2.5 Flash may systematically over- or under-extract certain categories, and extraction quality likely varies with article length and complexity. Without a human-coded gold standard, extraction accuracy cannot be validated directly. The source type asymmetry, particularly the advocacy-group disparity ($2.3\times$), suggests that tone differences detected in the main analysis may partly reflect differential journalistic sourcing practices rather than editorial bias per se.
+The extraction covers the full corpus of prosecutor-attributed articles ($n=\NProgAttributed$ progressive, $n=\NTradAttributed$ traditional), eliminating sampling bias as a concern. However, the LLM-based extraction itself introduces measurement uncertainty: Gemini 2.5 Flash may systematically over- or under-extract certain categories, and extraction quality likely varies with article length and complexity. Without a human-coded gold standard, extraction accuracy cannot be validated directly. The source type asymmetry, particularly the advocacy-group disparity (\AdvocacyRatio$\times$), suggests that tone differences detected in the main analysis may partly reflect differential journalistic sourcing practices rather than editorial bias per se.
 
 
 % ────────────────────────────────────────────────────────────────────────
@@ -766,6 +758,50 @@ This remains a pilot study ($n = 200$). The Alameda comparison lacks statistical
 
 
 % ────────────────────────────────────────────────────────────────────────
+\section{Supplementary Diagnostic Figures and Tables}
+\label{app:diagnostics}
+
+This appendix consolidates diagnostic visuals and supporting tables moved from the main text for readability.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.95\textwidth]{10_method_comparison.png}
+  \caption{Tone--evaluation divergence at the article level. Central panel: KDE contour plot of Method A (aspect sentiment) vs.\ Method B (stance classification) scores for progressive (red) and traditional (blue) prosecutors. The horizontal separation in stance contrasts with the overlapping sentiment distributions, confirming that media coverage differs in evaluative framing rather than emotional tone.}
+  \label{fig:methodcomp}
+\end{figure}
+
+\begin{table}[ht]
+\centering
+\caption{Per-method OLS regressions: progressive prosecutor coefficient with cluster-robust SEs.}
+\label{tab:methodreg}
+\begin{tabular}{lrrrrr}
+\toprule
+Method & $\beta$ & $SE$ & $p$ & 95\% CI & $R^2$ \\
+\midrule
+B: Stance           & $\mathbf{-0.132}$ & 0.030 & $< .001$ & $[-0.190, -0.074]$ & .071 \\
+C: Keywords          & $\mathbf{-0.011}$ & 0.002 & $< .001$ & $[-0.015, -0.007]$ & .053 \\
+A: Aspect sentiment  & $0.008$           & 0.016 & $.618$   & $[-0.024, 0.040]$  & .008 \\
+D: Document sentiment & $0.017$          & 0.014 & $.219$   & $[-0.010, 0.044]$  & .006 \\
+\midrule
+Composite            & $-0.022$          & 0.013 & $.089$   & $[-0.047, 0.003]$  & .022 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{13_theme_attribution_heatmap.png}
+  \caption{Theme prevalence (\%) by individual prosecutor. Rows are colored by ideology (red = progressive, blue = traditional). Darker cells indicate higher prevalence.}
+  \label{fig:themeheat}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.85\textwidth]{14_theme_method_agreement.png}
+  \caption{Distribution of detection method agreement by prosecutor type. Segments show the proportion of articles detected by 0--4 independent methods.}
+  \label{fig:themeagree}
+\end{figure}
+
 \section{Illustrative Examples of Identified Bias by Method}
 \label{app:examples}
 
@@ -830,12 +866,38 @@ The theme attribution method ($d = -0.43$) requires anti-prosecutor themes to be
 
 A \emph{San Francisco Chronicle} article about Tenderloin drug enforcement produced 19 bias indicators, including \textbf{loaded language} (``drug pushers'' as pejorative label; ``a stunning 70\% increase'' as hyperbole), \textbf{ungrounded claims} (``arrested and released with few real consequences'' without case data), and \textbf{missing context} (``Boudin and Public Defender Mano Raju declined to comment''). Critically, many articles produce zero indicators: evidence-based critical reporting is not flagged as biased. The method also detects bias \emph{favoring} prosecutors, supporting the finding that bias is not unidirectional.
 
+\section{Sensitivity to Traditional Baseline Composition}
+\label{app:baseline_sensitivity}
+
+Brooke Jenkins accounts for more than half of the traditional baseline ($n=\NJenkins$ of $n=\NTradAttributed$ traditional articles). Because this can attenuate pooled traditional estimates, I recomputed group comparisons after excluding Jenkins and retaining all progressive articles ($n=\NoJenkinsNProg$ progressive; $n=\NoJenkinsNTrad$ traditional).
+
+\begin{table}[H]
+\centering
+\caption{Per-method sensitivity to excluding Brooke Jenkins from the traditional baseline.}
+\label{tab:baseline_sensitivity}
+\begin{tabular}{lcc}
+\toprule
+Outcome & Full sample ($d$, $p$) & Excluding Jenkins ($d$, $p$) \\
+\midrule
+Composite & $d=\FullCompositeD$, $p=\FullCompositeP$ & $d=\NoJenkinsCompositeD$, $p=\NoJenkinsCompositeP$ \\
+Stance & $d=\FullStanceD$, $p=\FullStanceP$ & $d=\NoJenkinsStanceD$, $p=\NoJenkinsStanceP$ \\
+Keywords & $d=\FullKeywordsD$, $p=\FullKeywordsP$ & $d=\NoJenkinsKeywordsD$, $p=\NoJenkinsKeywordsP$ \\
+Aspect sentiment & $d=\FullAspectD$, $p=\FullAspectP$ & $d=\NoJenkinsAspectD$, $p=\NoJenkinsAspectP$ \\
+Document sentiment & $d=\FullDocD$, $p=\FullDocP$ & $d=\NoJenkinsDocD$, $p=\NoJenkinsDocP$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Excluding Jenkins strengthens the composite, stance, and keyword differentials materially, while sentiment metrics remain small and comparatively weak. This indicates that full-sample estimates are conservative with respect to evaluative dimensions.
+
+For the complementary robustness check that removes fallback-attributed articles instead of a specific prosecutor baseline component, see Appendix~\ref{app:fallback_sensitivity}.
+
 \section{Sensitivity Analysis Excluding Fallback Attributions}
 \label{app:fallback_sensitivity}
 
 In the attribution pipeline, fallback assignments occur when an article contains generic DA references (e.g., ``the district attorney'') but no named prosecutor mention; in these cases, the article is assigned by publication county and article date. This mechanism expands coverage but can introduce measurement noise when outlets report cross-county stories.
 
-Using the article-level analysis sample from Section~4 ($n=12{,}953$), fallback assignment accounts for $6{,}630$ articles (51.2\%). Excluding these fallback-attributed cases leaves $6{,}323$ directly attributed articles (named-mention based), with $n=3{,}341$ progressive and $n=2{,}982$ traditional.
+Using the article-level analysis sample from Section~4 ($n=\NoFallbackNTotal$), fallback assignment accounts for $\NoFallbackExcludedN$ articles (\NoFallbackExcludedPct\%). Excluding these fallback-attributed cases leaves $\NoFallbackRemainingN$ directly attributed articles (named-mention based), with $n=\NoFallbackNProg$ progressive and $n=\NoFallbackNTrad$ traditional.
 
 \begin{table}[H]
 \centering
@@ -845,18 +907,18 @@ Using the article-level analysis sample from Section~4 ($n=12{,}953$), fallback 
 \toprule
 Sample & $n_{\text{Prog}}$ & $M_{\text{Prog}}$ & $n_{\text{Trad}}$ & $M_{\text{Trad}}$ & $d$ & $p_{\text{Welch}}$ \\
 \midrule
-Full attributed sample & 6{,}601 & $-0.0317$ & 6{,}352 & $-0.0020$ & $-0.157$ & $4.05\times 10^{-19}$ \\
-Exclude fallback-assigned & 3{,}341 & $-0.0387$ & 2{,}982 & $+0.0241$ & $-0.310$ & $3.86\times 10^{-35}$ \\
+Full attributed sample & \NProgAttributed & $-0.0317$ & \NTradAttributed & $-0.0020$ & $\FullCompositeD$ & $\FullCompositeP$ \\
+Exclude fallback-assigned & \NoFallbackNProg & $-0.0387$ & \NoFallbackNTrad & $+0.0241$ & $\NoFallbackCompositeD$ & $\NoFallbackCompositeP$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-The no-fallback estimate is approximately double the full-sample effect size in magnitude. The bootstrap mean difference (progressive minus traditional) is $-0.0628$ with 95\% CI $[-0.0728,\,-0.0527]$, confirming that the progressive group remains significantly more negative after removing all fallback assignments. Substantively, this indicates that fallback attribution is conservative in this corpus: it attenuates the ideology differential rather than driving it.
+The no-fallback estimate is approximately double the full-sample effect size in magnitude. The bootstrap mean difference (progressive minus traditional) is $\NoFallbackBootDiff$ with 95\% CI $[\NoFallbackBootCiLo,\ \NoFallbackBootCiHi]$, confirming that the progressive group remains significantly more negative after removing all fallback assignments. Substantively, this indicates that fallback attribution is conservative in this corpus: it attenuates the ideology differential rather than driving it.
 
 \section{Segmented Interrupted Time-Series Robustness}
 \label{app:segmented_its}
 
-The main text reports pre/post comparisons around prosecutor transitions. As a stronger robustness check, I estimate segmented interrupted time-series models on monthly county-level means:
+The main text reports a concise segmented ITS summary for temporal dynamics by method. This appendix provides the full model specification, coefficient table, and plots for those temporal analyses:
 \[
 Y_t = \beta_0 + \beta_1 t + \beta_2 \text{Post}_t + \beta_3 \text{TimeAfter}_t + \varepsilon_t
 \]
@@ -881,7 +943,7 @@ Alameda (O'Malley $\rightarrow$ Price) & Keywords & $+0.005$ ($p=.079$) & $-0.00
 \end{tabular}
 \end{table}
 
-Figure~\ref{fig:segmented_its} visualizes the same segmented models for the three most policy-relevant outcomes (composite, stance, keywords), plotting observed monthly means and fitted pre/post trends around each transition date.
+Figure~\ref{fig:segmented_its} visualizes the same segmented models for the three most policy-relevant outcomes (composite, stance, keywords), plotting observed monthly means and fitted segmented trends around each transition date.
 
 \begin{figure}[H]
 \centering
@@ -890,7 +952,7 @@ Figure~\ref{fig:segmented_its} visualizes the same segmented models for the thre
   \label{fig:segmented_its}
 \end{figure}
 
-These segmented models sharpen interpretation relative to simple pre/post tests. In San Francisco, the composite does not show an abrupt level break but does show a modest positive post-transition slope, consistent with gradual movement toward less negative coverage. In Alameda, the composite shows a clear immediate negative level shift at the Price transition with no significant slope change, consistent with a step increase in negative coverage. Across both transitions, stance remains the strongest and most consistent evaluative signal. This robustness analysis improves temporal identification but should still be interpreted descriptively: without an external control series, it does not establish strict causal effects.
+These segmented models sharpen interpretation by separating immediate transition shifts from post-transition trend changes. In San Francisco, the composite does not show an abrupt level break but does show a modest positive post-transition slope, consistent with gradual movement toward less negative coverage. In Alameda, the composite shows a clear immediate negative level shift at the Price transition with no significant slope change, consistent with a step increase in negative coverage. Across both transitions, stance remains the strongest and most consistent evaluative signal. This robustness analysis improves temporal identification but should still be interpreted descriptively: without an external control series, it does not establish strict causal effects.
 
 \end{appendices}
 
