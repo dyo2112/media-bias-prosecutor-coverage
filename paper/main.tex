@@ -437,7 +437,7 @@ The multi-method pipeline described in Section~3 measures the \emph{tone} and \e
 
 \subsection*{Method}
 
-I use Google's langextract library, which leverages Gemini 2.5 Flash to extract structured information from text with source grounding: every extraction is anchored to a specific span in the original article. The model was prompted with a detailed extraction schema and three diverse few-shot examples (one critical of a progressive prosecutor, one neutral about a traditional prosecutor, one with mixed coverage) to calibrate extraction behavior across ideological contexts. I applied the extraction pipeline to the full corpus of 13,544 prosecutor-attributed articles (6,766 progressive, 6,778 traditional), covering all five prosecutors: Boudin ($n = 5{,}920$), Jenkins ($n = 3{,}448$), O'Malley ($n = 1{,}599$), Price ($n = 846$), and Wagstaffe ($n = 1{,}731$).
+I use Google's langextract library, which leverages Gemini 2.5 Flash to extract structured information from text with source grounding: every extraction is anchored to a specific span in the original article. The model was prompted with a detailed extraction schema and three diverse few-shot examples (one critical of a progressive prosecutor, one neutral about a traditional prosecutor, one with mixed coverage) to calibrate extraction behavior across ideological contexts. I applied the extraction pipeline to the full corpus of 12,953 prosecutor-attributed articles (6,601 progressive, 6,352 traditional), covering all five prosecutors: Boudin ($n = 5{,}773$), Jenkins ($n = 3{,}207$), O'Malley ($n = 1{,}497$), Price ($n = 828$), and Wagstaffe ($n = 1{,}648$).
 
 \subsubsection*{Extraction prompt}
 
@@ -532,70 +532,71 @@ source\_attrib. & ``Price responded that her office has actually increased\ldots
 \end{tabular}
 \end{table}
 
-The extraction schema defines five content categories: (1)~\emph{claims against the prosecutor}, classified by type (performance, policy, character, competence) and evidence quality; (2)~\emph{source attributions}, identifying the speaker's role and stance toward the prosecutor; (3)~\emph{causal claims} linking the prosecutor's actions to outcomes; (4)~\emph{policy actions} attributed to the prosecutor; and (5)~\emph{comparisons} between the current prosecutor and predecessors or standards. The pipeline produced 138,101 total extraction instances across the 13,544 articles (mean $= 10.2$ per article).
+The extraction schema defines five content categories: (1)~\emph{claims against the prosecutor}, classified by type (performance, policy, character, competence) and evidence quality; (2)~\emph{source attributions}, identifying the speaker's role and stance toward the prosecutor; (3)~\emph{causal claims} linking the prosecutor's actions to outcomes; (4)~\emph{policy actions} attributed to the prosecutor; and (5)~\emph{comparisons} between the current prosecutor and predecessors or standards. The pipeline produced 135,178 total extraction instances across the 12,953 articles (mean $= 10.4$ per article).
 
 \subsection*{Results}
 
-\textbf{Source type distribution.} The types of sources quoted differ significantly between prosecutor groups ($\chi^2 = 1{,}700.4$, $p \approx 0$, $df = 8$; see Figure~\ref{fig:sourcetypes}). All comparisons are expressed as proportions of total sources within each group and as per-article rates:
+\textbf{Source type distribution.} The types of sources quoted differ significantly between prosecutor groups ($\chi^2 = 1{,}720.3$, $p \approx 0$, $df = 9$; see Figure~\ref{fig:sourcetypes}). All comparisons are expressed as proportions of total sources within each group and as per-article rates:
 
 \begin{table}[ht]
 \centering
-\caption{Source type distribution by prosecutor ideology. Proportions are within-group; rates are per attributed article (progressive $n = 6{,}766$; traditional $n = 6{,}778$).}
+\caption{Source type distribution by prosecutor ideology. Proportions are within-group; rates are per attributed article (progressive $n = 6{,}601$; traditional $n = 6{,}352$).}
 \label{tab:sourcetypes}
 \small
 \begin{tabular}{lrrrrr}
 \toprule
 Source Type & Prog.\ \% & Trad.\ \% & Prog./art. & Trad./art. & Ratio \\
 \midrule
-Police             & 11.7\% & 11.6\% & 0.73 & 0.68 & $1.1\times$ \\
-Victim             &  2.4\% &  2.4\% & 0.15 & 0.14 & $1.1\times$ \\
-Defense attorney   &  6.7\% &  9.2\% & 0.42 & 0.54 & $0.8\times$ \\
-Prosecutor (self)  & 33.2\% & 42.0\% & 2.07 & 2.46 & $0.8\times$ \\
-Politician         & 10.0\% &  7.0\% & 0.62 & 0.41 & $\mathbf{1.5\times}$ \\
-Community member   & 12.2\% & 11.4\% & 0.76 & 0.67 & $1.1\times$ \\
-Expert             &  7.7\% &  5.9\% & 0.48 & 0.34 & $\mathbf{1.4\times}$ \\
-Journalist         &  7.2\% &  4.9\% & 0.45 & 0.28 & $1.6\times$ \\
-Advocacy group     &  6.9\% &  3.1\% & 0.43 & 0.18 & $\mathbf{2.4\times}$ \\
+Police             & 11.7\% & 11.6\% & 0.74 & 0.71 & $1.0\times$ \\
+Victim             &  2.4\% &  2.4\% & 0.15 & 0.15 & $1.0\times$ \\
+Defense attorney   &  6.7\% &  9.2\% & 0.42 & 0.56 & $0.8\times$ \\
+Prosecutor (self)  & 33.1\% & 42.2\% & 2.08 & 2.56 & $0.8\times$ \\
+Politician         & 10.0\% &  7.0\% & 0.63 & 0.43 & $\mathbf{1.5\times}$ \\
+Community member   & 12.2\% & 11.3\% & 0.77 & 0.68 & $1.1\times$ \\
+Expert             &  7.7\% &  5.8\% & 0.48 & 0.35 & $\mathbf{1.4\times}$ \\
+Journalist         &  7.2\% &  4.9\% & 0.45 & 0.30 & $1.5\times$ \\
+Advocacy group     &  6.9\% &  3.1\% & 0.43 & 0.19 & $\mathbf{2.3\times}$ \\
+Other/missing type &  1.9\% &  2.5\% & 0.12 & 0.15 & $0.8\times$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Coverage of progressive prosecutors features proportionally more advocacy group voices ($2.4\times$), journalist commentary ($1.6\times$), politician quotes ($1.5\times$), and expert sources ($1.4\times$ per article). Notably, traditional prosecutors receive more defense-attorney ($0.8\times$) and self-quote ($0.8\times$) sources per article, while police and community sources appear at roughly equal rates. These sourcing differentials suggest that progressive prosecutor coverage draws on a broader and more politically diverse source ecology, while traditional prosecutor coverage relies more heavily on the prosecutor's own statements and legal actors. This is consistent with the accountability and reform framing patterns documented in Section~4, and with the ``toplash'' dynamics described by \citet{goldstein2024}: the elevated presence of advocacy, politician, and expert sources around progressive prosecutors is precisely the source ecology one would expect when institutional actors mobilize media relationships to contest reform agendas. The distribution of source \emph{stance} further illuminates the sourcing asymmetry:
+Coverage of progressive prosecutors features proportionally more advocacy group voices ($2.3\times$), journalist commentary ($1.5\times$), politician quotes ($1.5\times$), and expert sources ($1.4\times$ per article). Notably, traditional prosecutors receive more defense-attorney ($0.8\times$) and self-quote ($0.8\times$) sources per article, while police, victim, and community sources appear at roughly equal rates. These sourcing differentials suggest that progressive prosecutor coverage draws on a broader and more politically diverse source ecology, while traditional prosecutor coverage relies more heavily on the prosecutor's own statements and legal actors. This is consistent with the accountability and reform framing patterns documented in Section~4, and with the ``toplash'' dynamics described by \citet{goldstein2024}: the elevated presence of advocacy, politician, and expert sources around progressive prosecutors is precisely the source ecology one would expect when institutional actors mobilize media relationships to contest reform agendas. The distribution of source \emph{stance} further illuminates the sourcing asymmetry:
 
 \begin{table}[ht]
 \centering
-\caption{Source stance per article by prosecutor ideology (progressive $n = 6{,}766$; traditional $n = 6{,}778$).}
+\caption{Source stance per article by prosecutor ideology (progressive $n = 6{,}601$; traditional $n = 6{,}352$).}
 \label{tab:sourcestance}
 \small
 \begin{tabular}{lrrrr}
 \toprule
 Source Stance & Prog./art. & Trad./art. & $d$ & $p$ \\
 \midrule
-Critical    & 1.68 & 1.23 & 0.15 & $< 10^{-18}$ \\
-Supportive  & 1.41 & 0.91 & 0.23 & $< 10^{-39}$ \\
-Neutral     & 3.14 & 3.68 & $-0.16$ & $< 10^{-20}$ \\
+Critical    & 1.70 & 1.28 & 0.14 & $< 10^{-15}$ \\
+Supportive  & 1.42 & 0.95 & 0.22 & $< 10^{-34}$ \\
+Neutral     & 3.16 & 3.84 & $-0.20$ & $< 10^{-29}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Progressive prosecutors attract both more critical ($d = 0.15$) and more supportive ($d = 0.23$) sources per article, while traditional prosecutors receive significantly more neutral sources ($d = -0.16$). This pattern reflects the greater political salience and controversy surrounding progressive prosecutors: their coverage generates more polarized sourcing from both sides, while traditional prosecutor coverage relies more heavily on neutral institutional voices.
+Progressive prosecutors attract both more critical ($d = 0.14$) and more supportive ($d = 0.22$) sources per article, while traditional prosecutors receive significantly more neutral sources ($d = -0.20$). This pattern reflects the greater political salience and controversy surrounding progressive prosecutors: their coverage generates more polarized sourcing from both sides, while traditional prosecutor coverage relies more heavily on neutral institutional voices.
 
-\textbf{Causal claims.} Progressive prosecutors face 1.8 times as many ``prosecutor caused harm'' attributions per article (0.41 vs.\ 0.23). ``Prosecutor helped'' attributions are also 1.2 times higher per article for progressives (0.15 vs.\ 0.12). The asymmetric harm ratio provides a specific structural mechanism through which progressive prosecutors receive more negative coverage.
+\textbf{Causal claims.} Progressive prosecutors face 1.7 times as many ``prosecutor caused harm'' attributions per article (0.41 vs.\ 0.24). ``Prosecutor helped'' attributions are also 1.2 times higher per article for progressives (0.15 vs.\ 0.13). The asymmetric harm ratio provides a specific structural mechanism through which progressive prosecutors receive more negative coverage.
 
-\textbf{Claim types.} Per article, progressive prosecutors face more claims across all categories: policy (0.48 vs.\ 0.30, $1.6\times$), performance (0.45 vs.\ 0.30, $1.5\times$), character (0.41 vs.\ 0.35, $1.2\times$), and competence (0.31 vs.\ 0.28, $1.1\times$). The largest differentials appear for policy and performance criticisms, suggesting that progressive prosecutors are disproportionately criticized for \emph{what they do}, their decisions and policy choices, rather than for personal attributes, a pattern consistent with the accountability framing differential observed in Section~4.
+\textbf{Claim types.} Per article, progressive prosecutors face more claims across all categories: policy (0.48 vs.\ 0.31, $1.6\times$), performance (0.45 vs.\ 0.31, $1.5\times$), character (0.42 vs.\ 0.36, $1.1\times$), and competence (0.31 vs.\ 0.29, $1.1\times$). The largest differentials appear for policy and performance criticisms, suggesting that progressive prosecutors are disproportionately criticized for \emph{what they do}, their decisions and policy choices, rather than for personal attributes, a pattern consistent with the accountability framing differential observed in Section~4.
 
 \begin{figure}[H]
   \centering
   \includegraphics[width=0.85\textwidth]{08_source_type_distribution.png}
-  \caption{Source type distribution by prosecutor ideology from LLM structural extraction ($n = 13{,}544$ articles). Bars show proportions of total sources within each group; annotations show raw counts. The largest relative differentials are in advocacy groups ($2.4\times$), journalist commentary ($1.6\times$), politicians ($1.5\times$), and expert sources ($1.4\times$ per article).}
+  \caption{Source type distribution by prosecutor ideology from LLM structural extraction ($n = 12{,}953$ articles). Bars show proportions of total sources within each group; annotations show raw counts. The largest relative differentials are in advocacy groups ($2.3\times$), journalist commentary ($1.5\times$), politicians ($1.5\times$), and expert sources ($1.4\times$ per article).}
   \label{fig:sourcetypes}
 \end{figure}
 
-\textbf{Per-prosecutor extraction density.} Pamela Price generates the most extraction-dense coverage (13.3 per article, $n = 846$), followed by Chesa Boudin (10.6, $n = 5{,}920$), Brooke Jenkins (10.4, $n = 3{,}448$), Nancy O'Malley (9.6, $n = 1{,}599$), and Steve Wagstaffe (7.7, $n = 1{,}731$).
+\textbf{Per-prosecutor extraction density.} Pamela Price generates the most extraction-dense coverage (13.3 per article, $n = 828$), followed by Brooke Jenkins (10.8, $n = 3{,}207$), Chesa Boudin (10.7, $n = 5{,}773$), Nancy O'Malley (10.0, $n = 1{,}497$), and Steve Wagstaffe (7.9, $n = 1{,}648$).
 
 \subsection*{Limitations}
 
-The extraction covers the full corpus of prosecutor-attributed articles (6,766 progressive, 6,778 traditional), eliminating sampling bias as a concern. However, the LLM-based extraction itself introduces measurement uncertainty: Gemini 2.5 Flash may systematically over- or under-extract certain categories, and extraction quality likely varies with article length and complexity. Without a human-coded gold standard, extraction accuracy cannot be validated directly. The source type asymmetry, particularly the advocacy-group disparity ($2.4\times$), suggests that tone differences detected in the main analysis may partly reflect differential journalistic sourcing practices rather than editorial bias per se.
+The extraction covers the full corpus of prosecutor-attributed articles (6,601 progressive, 6,352 traditional), eliminating sampling bias as a concern. However, the LLM-based extraction itself introduces measurement uncertainty: Gemini 2.5 Flash may systematically over- or under-extract certain categories, and extraction quality likely varies with article length and complexity. Without a human-coded gold standard, extraction accuracy cannot be validated directly. The source type asymmetry, particularly the advocacy-group disparity ($2.3\times$), suggests that tone differences detected in the main analysis may partly reflect differential journalistic sourcing practices rather than editorial bias per se.
 
 
 % ────────────────────────────────────────────────────────────────────────

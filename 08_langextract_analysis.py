@@ -350,6 +350,9 @@ def run_extraction(
 ) -> list[dict]:
     """Process all articles, with checkpointing and progress bar."""
 
+    # Guard against duplicate article_id rows in input.
+    df = df.drop_duplicates(subset=["article_id"]).copy()
+
     # Load checkpoint (IDs are stored as strings in JSONL)
     done_ids_str = load_checkpoint(EXTRACTIONS_JSONL) if resume else set()
     if done_ids_str:
@@ -358,7 +361,12 @@ def run_extraction(
     # Match checkpoint ID types to DataFrame (parquet stores int64)
     df_id_dtype = df["article_id"].dtype
     if pd.api.types.is_integer_dtype(df_id_dtype):
-        done_ids = {int(x) for x in done_ids_str}
+        done_ids = set()
+        for x in done_ids_str:
+            try:
+                done_ids.add(int(x))
+            except (TypeError, ValueError):
+                continue
     else:
         done_ids = done_ids_str
 
@@ -441,6 +449,47 @@ def load_all_extractions(jsonl_path: Path) -> list[dict]:
     return results
 
 
+def deduplicate_results_by_article(results: list[dict]) -> list[dict]:
+    """Keep one extraction result per article_id.
+
+    Preference order when duplicates exist:
+      1) successful record (error is None) over failed record
+      2) latest record when both are successful or both failed
+    """
+    if not results:
+        return results
+
+    chosen: dict[str, dict] = {}
+    had_dupes = 0
+    for res in results:
+        aid = str(res.get("article_id"))
+        if not aid:
+            continue
+
+        prev = chosen.get(aid)
+        if prev is None:
+            chosen[aid] = res
+            continue
+
+        had_dupes += 1
+        prev_ok = prev.get("error") is None
+        curr_ok = res.get("error") is None
+
+        if curr_ok and not prev_ok:
+            chosen[aid] = res
+        elif curr_ok == prev_ok:
+            # Same status (both success or both error): keep latest.
+            chosen[aid] = res
+
+    if had_dupes > 0:
+        logger.warning(
+            f"Detected duplicate extraction records: {had_dupes} extra rows across "
+            f"{len(results)} JSONL entries. Using {len(chosen)} unique article_ids."
+        )
+
+    return list(chosen.values())
+
+
 def flatten_extractions(results: list[dict], df: pd.DataFrame) -> pd.DataFrame:
     """Flatten extraction results into a per-extraction DataFrame."""
     rows = []
@@ -471,7 +520,17 @@ def flatten_extractions(results: list[dict], df: pd.DataFrame) -> pd.DataFrame:
                 row[f"attr_{k}"] = v
             rows.append(row)
 
-    return pd.DataFrame(rows)
+    flat = pd.DataFrame(rows)
+    if flat.empty:
+        return flat
+
+    # Keep only rows that map to the active analysis corpus.
+    before = len(flat)
+    flat = flat[flat["prosecutor_type"].notna()].copy()
+    dropped = before - len(flat)
+    if dropped > 0:
+        logger.warning(f"Dropped {dropped} extraction rows not mapped to active prosecutor articles")
+    return flat
 
 
 def build_article_summary(results: list[dict], df: pd.DataFrame) -> pd.DataFrame:
@@ -536,6 +595,9 @@ def build_article_summary(results: list[dict], df: pd.DataFrame) -> pd.DataFrame
     logger.info(f"Merge: {matched}/{len(result)} articles matched prosecutor metadata")
     if matched < len(result):
         logger.warning(f"{len(result) - matched} articles missing prosecutor_type after merge")
+
+    # Keep only current corpus articles with prosecutor attribution.
+    result = result[result["prosecutor_type"].notna()].copy()
     return result
 
 
@@ -563,9 +625,14 @@ def run_statistical_analysis(ext_df: pd.DataFrame, summary_df: pd.DataFrame) -> 
         for ptype in ["Progressive", "Traditional"]:
             subset = sources[sources["prosecutor_type"] == ptype]
             total = len(subset)
+            src_series = subset.get("attr_source_type", pd.Series(dtype=object))
+            known_total = 0
             for stype in source_types:
-                n = (subset.get("attr_source_type", pd.Series()) == stype).sum()
-                source_dist[ptype][stype] = int(n)
+                n = int((src_series == stype).sum())
+                source_dist[ptype][stype] = n
+                known_total += n
+            # Keep denominators honest when model outputs unmapped/missing values.
+            source_dist[ptype]["other_or_missing"] = int(max(total - known_total, 0))
             source_dist[ptype]["total"] = int(total)
     stats["source_type_distribution"] = source_dist
 
@@ -673,7 +740,8 @@ def print_analysis_report(stats: dict):
     logger.info("\n── Source Type Distribution ──")
     sd = stats.get("source_type_distribution", {})
     for stype in ["police", "victim", "prosecutor", "politician", "defense_attorney",
-                  "community_member", "expert", "advocacy_group", "journalist"]:
+                  "community_member", "expert", "advocacy_group", "journalist",
+                  "other_or_missing"]:
         p = sd.get("Progressive", {}).get(stype, 0)
         t = sd.get("Traditional", {}).get(stype, 0)
         if p + t > 0:
@@ -737,11 +805,13 @@ def generate_visualization(jsonl_path: Path, output_html: Path):
     # Temporarily redirect stdout to utf-8 to prevent Windows cp1252 errors
     # from langextract's internal print statements
     old_stdout = sys.stdout
+    temp_stdout = None
     try:
         if sys.platform == "win32":
-            sys.stdout = _io.TextIOWrapper(
+            temp_stdout = _io.TextIOWrapper(
                 sys.stdout.buffer, encoding="utf-8", errors="replace"
             )
+            sys.stdout = temp_stdout
         html = lx.visualize(str(jsonl_path))
         if html:
             output_html.write_text(html, encoding="utf-8")
@@ -751,6 +821,13 @@ def generate_visualization(jsonl_path: Path, output_html: Path):
     except Exception as e:
         logger.warning(f"Could not generate visualization: {e}")
     finally:
+        # Detach wrapper so it doesn't close the underlying stdout buffer.
+        if temp_stdout is not None:
+            try:
+                temp_stdout.flush()
+                temp_stdout.detach()
+            except Exception:
+                pass
         sys.stdout = old_stdout
 
 
@@ -838,8 +915,10 @@ def main():
         sys.exit(1)
 
     with timer("Analysis"):
-        all_results = load_all_extractions(EXTRACTIONS_JSONL)
-        logger.info(f"Loaded {len(all_results)} extraction results from JSONL")
+        raw_results = load_all_extractions(EXTRACTIONS_JSONL)
+        logger.info(f"Loaded {len(raw_results)} extraction results from JSONL")
+        all_results = deduplicate_results_by_article(raw_results)
+        logger.info(f"Using {len(all_results)} unique per-article extraction results")
 
         # Flatten to per-extraction DataFrame
         ext_df = flatten_extractions(all_results, df)
