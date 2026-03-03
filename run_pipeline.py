@@ -1,38 +1,62 @@
 """
-Run the full transformer pipeline: 04 → 05 → 06 → 07 (+ optional 08).
+Run the core analysis pipeline: 04 -> 05 -> 06 -> 07.
 
-Double-click this file or run: python run_pipeline.py
-  Add --with-langextract to also run Step 08 (requires LANGEXTRACT_API_KEY).
-Output is displayed live AND saved to pipeline_log.txt.
+Usage:
+  python run_pipeline.py
+    Core analyses and figures only.
+
+  python run_pipeline.py --with-langextract
+    Core + Step 08 structural extraction (requires LANGEXTRACT_API_KEY).
+
+  python run_pipeline.py --paper
+    Core + publication-lock extras:
+      - Step 10 theme attribution
+      - Step 12 segmented ITS
+      - paper/build_stats_tex.py
+
+  python run_pipeline.py --paper --with-langextract
+    Full publication run including structural extraction.
+
+Output is displayed live and saved to pipeline_log.txt.
 """
 
+import datetime
+import os
 import subprocess
 import sys
-import os
-import datetime
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(SCRIPT_DIR, "pipeline_log.txt")
 
-STEPS = [
-    ("1/4", "Bias detection (Methods A,B,C,D)", ["python", "04_bias_detection.py"]),
-    ("2/4", "Framing analysis",                 ["python", "05_framing_analysis.py"]),
-    ("3/4", "Statistical analysis",             ["python", "06_statistics.py"]),
-    ("4/4", "Generating figures",               ["python", "07_visualize.py"]),
+BASE_STEPS = [
+    ("", "Bias detection (Methods A,B,C,D)", ["python", "04_bias_detection.py"]),
+    ("", "Framing analysis", ["python", "05_framing_analysis.py"]),
+    ("", "Statistical analysis", ["python", "06_statistics.py"]),
+    ("", "Generating figures", ["python", "07_visualize.py"]),
 ]
 
-LANGEXTRACT_STEP = ("5/5", "langextract grounded extraction", ["python", "08_langextract_analysis.py"])
+LANGEXTRACT_STEP = (
+    "",
+    "langextract grounded extraction",
+    ["python", "08_langextract_analysis.py"],
+)
+
+PAPER_STEPS = [
+    ("", "Theme attribution analysis", ["python", "10_theme_attribution.py"]),
+    ("", "Segmented ITS robustness", ["python", "12_segmented_its.py"]),
+    ("", "Generate manuscript stats macros", ["python", "paper/build_stats_tex.py"]),
+]
 
 
-def log(msg: str, f):
+def log(msg: str, f) -> None:
     """Print to console and write to log file."""
     print(msg)
     f.write(msg + "\n")
     f.flush()
 
 
-def run_step(label: str, desc: str, cmd: list[str], log_f):
-    """Run a pipeline step, streaming output to both console and log."""
+def run_step(label: str, desc: str, cmd: list[str], log_f) -> bool:
+    """Run one pipeline step while streaming output."""
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     log(f"\n[{label}] {desc}", log_f)
     log(f"         Started at: {now}", log_f)
@@ -45,7 +69,7 @@ def run_step(label: str, desc: str, cmd: list[str], log_f):
         text=True,
         encoding="utf-8",
         errors="replace",
-        bufsize=1,  # line-buffered
+        bufsize=1,
     )
 
     for line in proc.stdout:
@@ -60,31 +84,35 @@ def run_step(label: str, desc: str, cmd: list[str], log_f):
     if proc.returncode != 0:
         log(f"  ERROR: [{label}] failed with exit code {proc.returncode} at {now}", log_f)
         return False
-    else:
-        log(f"  [{label}] Finished at: {now}", log_f)
-        return True
+
+    log(f"  [{label}] Finished at: {now}", log_f)
+    return True
 
 
-def main():
+def main() -> None:
     os.chdir(SCRIPT_DIR)
 
     run_langextract = "--with-langextract" in sys.argv
+    run_paper = "--paper" in sys.argv
 
-    steps = list(STEPS)
+    steps = list(BASE_STEPS)
     if run_langextract:
         steps.append(LANGEXTRACT_STEP)
+    if run_paper:
+        steps.extend(PAPER_STEPS)
 
     total = len(steps)
-    # Relabel step numbers
     labeled_steps = [
-        (f"{i+1}/{total}", desc, cmd) for i, (_, desc, cmd) in enumerate(steps)
+        (f"{i + 1}/{total}", desc, cmd) for i, (_, desc, cmd) in enumerate(steps)
     ]
 
     with open(LOG_FILE, "a", encoding="utf-8") as log_f:
         log("=" * 50, log_f)
-        log("  Media Bias Pipeline - Transformer Analysis", log_f)
+        log("  Media Bias Pipeline", log_f)
         if run_langextract:
             log("  (with langextract grounded extraction)", log_f)
+        if run_paper:
+            log("  (paper mode: theme + segmented ITS + stats macros)", log_f)
         log("=" * 50, log_f)
         log(f"  Started: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", log_f)
         log(f"  Log file: {LOG_FILE}", log_f)
@@ -110,6 +138,11 @@ def main():
             log("  - output/08_extractions_summary.parquet", log_f)
             log("  - output/08_extraction_stats.json", log_f)
             log("  - output/08_visualization.html", log_f)
+        if run_paper:
+            log("  - output/10_theme_stats.json", log_f)
+            log("  - output/12_segmented_its_results.json", log_f)
+            log("  - output/12_segmented_its_table.csv", log_f)
+            log("  - paper/generated_stats.tex", log_f)
         log("=" * 50, log_f)
 
     input("\nPress Enter to close...")

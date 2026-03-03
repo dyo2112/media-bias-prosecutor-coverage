@@ -7,7 +7,7 @@ Analyses:
   2. Same-county paired comparisons (Boudin/Jenkins, O'Malley/Price)
   3. OLS regression with controls
   4. Framing differential (chi-square)
-  5. Interrupted time series at tenure transitions
+  5. Segmented interrupted time series at tenure transitions
   6. Equivalence test (TOST)
   7. Bootstrap confidence intervals
   8. Sensitivity analysis excluding fallback-attributed articles
@@ -38,6 +38,7 @@ from config import (
     PROSECUTORS,
     OUTPUT_DIR,
 )
+from segmented_its_utils import fit_segmented_its, prepare_monthly
 from utils import setup_logging, load_parquet, timer, logger
 
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -508,68 +509,97 @@ def analysis_4_framing(df: pd.DataFrame) -> dict:
 
 
 def analysis_5_time_series(df: pd.DataFrame) -> dict:
-    """Interrupted time series around tenure transitions."""
+    """Segmented interrupted time series around tenure transitions."""
     logger.info("\n" + "=" * 70)
-    logger.info("ANALYSIS 5: Interrupted Time Series")
+    logger.info("ANALYSIS 5: Segmented Interrupted Time Series")
     logger.info("=" * 70)
 
     results = {}
 
     transitions = [
         {
-            "label": "SF: Boudin → Jenkins",
+            "label": "SF: Boudin to Jenkins",
             "county_prosecutors": ["Chesa Boudin", "Brooke Jenkins"],
             "transition_date": pd.Timestamp("2022-07-08"),
         },
         {
-            "label": "Alameda: O'Malley → Price",
+            "label": "Alameda: O'Malley to Price",
             "county_prosecutors": ["Nancy O'Malley", "Pamela Price"],
             "transition_date": pd.Timestamp("2023-01-03"),
         },
     ]
 
     for trans in transitions:
-        logger.info(f"\n── {trans['label']} ──")
+        logger.info(f"\n-- {trans['label']} --")
         subset = df[df["primary_prosecutor"].isin(trans["county_prosecutors"])].copy()
 
         if len(subset) < 20:
             logger.warning(f"  Insufficient data: {len(subset)} articles")
             continue
 
-        # Monthly aggregation
-        subset["month"] = subset["date"].dt.to_period("M")
-        monthly = subset.groupby("month").agg(
-            mean_bias=("composite_bias_score", "mean"),
-            n_articles=("composite_bias_score", "count"),
-            prosecutor=("primary_prosecutor", lambda x: x.mode().iloc[0] if len(x) > 0 else None),
-        ).reset_index()
-        monthly["month_dt"] = monthly["month"].dt.to_timestamp()
+        monthly = prepare_monthly(
+            df=subset,
+            prosecutors=tuple(trans["county_prosecutors"]),
+            outcome_col="composite_bias_score",
+        )
+        model = fit_segmented_its(monthly, trans["transition_date"])
+        if "error" in model:
+            logger.warning(f"  Segmented ITS skipped: {model['error']}")
+            continue
 
-        # Pre/post transition
+        # Preserve article-level pre/post descriptives for continuity.
         transition_dt = trans["transition_date"]
         pre = subset.loc[subset["date"] < transition_dt, "composite_bias_score"].dropna().values
         post = subset.loc[subset["date"] >= transition_dt, "composite_bias_score"].dropna().values
 
-        if len(pre) < 5 or len(post) < 5:
-            logger.warning(f"  Pre={len(pre)}, Post={len(post)} — too few articles")
-            continue
+        prepost = None
+        if len(pre) >= 5 and len(post) >= 5:
+            t_stat, p_val = ttest_ind(pre, post, equal_var=False)
+            d = cohens_d(pre, post)
+            prepost = {
+                "n_pre": len(pre),
+                "n_post": len(post),
+                "mean_pre": float(np.mean(pre)),
+                "mean_post": float(np.mean(post)),
+                "welch_t": float(t_stat),
+                "welch_p": float(p_val),
+                "cohens_d": float(d),
+            }
+            logger.info(
+                f"  Pre/post descriptive: n_pre={len(pre)}, n_post={len(post)}, "
+                f"d={d:.4f}, p={p_val:.6f}"
+            )
+        else:
+            logger.info(
+                f"  Pre/post descriptive skipped: n_pre={len(pre)}, n_post={len(post)}"
+            )
 
-        t_stat, p_val = ttest_ind(pre, post, equal_var=False)
-        d = cohens_d(pre, post)
+        level_beta = model["coefficients"]["post"]
+        level_p = model["p_values"]["post"]
+        slope_beta = model["coefficients"]["time_after"]
+        slope_p = model["p_values"]["time_after"]
+        horizon = model["horizon_months"]
+        horizon_eff = model["effect_at_horizon"]
+        horizon_p = model["effect_at_horizon_p"]
+        logger.info(
+            f"  Segmented ITS: level={level_beta:.4f} (p={level_p:.4g}), "
+            f"slope={slope_beta:.4f} (p={slope_p:.4g}), "
+            f"{horizon}m effect={horizon_eff:.4f} (p={horizon_p:.4g})"
+        )
 
-        logger.info(f"  Pre-transition:  n={len(pre)}, mean={np.mean(pre):.4f}")
-        logger.info(f"  Post-transition: n={len(post)}, mean={np.mean(post):.4f}")
-        logger.info(f"  t={t_stat:.4f}, p={p_val:.6f}, Cohen's d={d:.4f}")
-
-        results[trans["label"]] = {
-            "n_pre": len(pre),
-            "n_post": len(post),
-            "mean_pre": float(np.mean(pre)),
-            "mean_post": float(np.mean(post)),
-            "welch_t": float(t_stat),
-            "welch_p": float(p_val),
-            "cohens_d": float(d),
+        entry = {
+            "model": "segmented_its",
+            **model,
+            "level_change_beta": float(level_beta),
+            "level_change_p": float(level_p),
+            "slope_change_beta": float(slope_beta),
+            "slope_change_p": float(slope_p),
         }
+        if prepost is not None:
+            entry["prepost_descriptive"] = prepost
+            # Backward-compatible top-level fields.
+            entry.update(prepost)
+        results[trans["label"]] = entry
 
     return results
 
@@ -873,19 +903,19 @@ def analysis_10_per_method_quarterly(df: pd.DataFrame) -> dict:
 
 
 def analysis_11_per_method_time_series(df: pd.DataFrame) -> dict:
-    """Per-method interrupted time series at tenure transitions."""
+    """Per-method segmented interrupted time series at tenure transitions."""
     logger.info("\n" + "=" * 70)
-    logger.info("ANALYSIS 11: Per-Method Time Series (Pre/Post Transition)")
+    logger.info("ANALYSIS 11: Per-Method Segmented Interrupted Time Series")
     logger.info("=" * 70)
 
     transitions = [
         {
-            "label": "SF: Boudin → Jenkins",
+            "label": "SF: Boudin to Jenkins",
             "county_prosecutors": ["Chesa Boudin", "Brooke Jenkins"],
             "transition_date": pd.Timestamp("2022-07-08"),
         },
         {
-            "label": "Alameda: O'Malley → Price",
+            "label": "Alameda: O'Malley to Price",
             "county_prosecutors": ["Nancy O'Malley", "Pamela Price"],
             "transition_date": pd.Timestamp("2023-01-03"),
         },
@@ -900,23 +930,55 @@ def analysis_11_per_method_time_series(df: pd.DataFrame) -> dict:
         for col in METHOD_COLS:
             if col not in subset.columns or subset[col].isna().all():
                 continue
+
+            monthly = prepare_monthly(
+                df=subset,
+                prosecutors=tuple(trans["county_prosecutors"]),
+                outcome_col=col,
+            )
+            model = fit_segmented_its(monthly, trans["transition_date"])
+            if "error" in model:
+                continue
+
             pre = subset.loc[subset["date"] < trans["transition_date"], col].dropna().values
             post = subset.loc[subset["date"] >= trans["transition_date"], col].dropna().values
-            if len(pre) < 5 or len(post) < 5:
-                continue
-            t_stat, p_val = ttest_ind(pre, post, equal_var=False)
-            d = cohens_d(pre, post)
-            logger.info(f"  {trans['label']} | {METHOD_LABELS.get(col, col)}: "
-                         f"d={d:.4f}, p={p_val:.6f}")
-            results[trans["label"]][col] = {
-                "n_pre": len(pre),
-                "n_post": len(post),
-                "mean_pre": float(np.mean(pre)),
-                "mean_post": float(np.mean(post)),
-                "welch_t": float(t_stat),
-                "welch_p": float(p_val),
-                "cohens_d": float(d),
+            prepost = None
+            if len(pre) >= 5 and len(post) >= 5:
+                t_stat, p_val = ttest_ind(pre, post, equal_var=False)
+                d = cohens_d(pre, post)
+                prepost = {
+                    "n_pre": len(pre),
+                    "n_post": len(post),
+                    "mean_pre": float(np.mean(pre)),
+                    "mean_post": float(np.mean(post)),
+                    "welch_t": float(t_stat),
+                    "welch_p": float(p_val),
+                    "cohens_d": float(d),
+                }
+
+            level_beta = model["coefficients"]["post"]
+            level_p = model["p_values"]["post"]
+            slope_beta = model["coefficients"]["time_after"]
+            slope_p = model["p_values"]["time_after"]
+            logger.info(
+                f"  {trans['label']} | {METHOD_LABELS.get(col, col)}: "
+                f"level={level_beta:.4f} (p={level_p:.4g}), "
+                f"slope={slope_beta:.4f} (p={slope_p:.4g})"
+            )
+
+            entry = {
+                "model": "segmented_its",
+                **model,
+                "level_change_beta": float(level_beta),
+                "level_change_p": float(level_p),
+                "slope_change_beta": float(slope_beta),
+                "slope_change_p": float(slope_p),
             }
+            if prepost is not None:
+                entry["prepost_descriptive"] = prepost
+                # Backward-compatible top-level fields.
+                entry.update(prepost)
+            results[trans["label"]][col] = entry
 
     return results
 

@@ -37,6 +37,13 @@ def latex_pvalue(value: float) -> str:
     return f"{value:.3f}"
 
 
+def latex_pvalue_table(value: float) -> str:
+    """Compact p-value formatter for table cells (used as p<... or p=...)."""
+    if value < 1e-3:
+        return "<.001"
+    return f"={value:.3f}"
+
+
 def cohens_d(progressive: pd.Series, traditional: pd.Series) -> float:
     p = progressive.to_numpy(dtype=float)
     t = traditional.to_numpy(dtype=float)
@@ -69,6 +76,7 @@ def source_rate(count: int, n_articles: int) -> float:
 def main() -> None:
     stats06 = json.loads((OUTPUT_DIR / "06_stats_results.json").read_text(encoding="utf-8"))
     stats08 = json.loads((OUTPUT_DIR / "08_extraction_stats.json").read_text(encoding="utf-8"))
+    stats12 = json.loads((OUTPUT_DIR / "12_segmented_its_results.json").read_text(encoding="utf-8"))
 
     df = pd.read_parquet(OUTPUT_DIR / "04_bias_scores.parquet")
     df = df[df["prosecutor_type"].isin(["Progressive", "Traditional"])].copy()
@@ -123,6 +131,16 @@ def main() -> None:
         return source_rate(int(claim_dist[group][key]), n_prog if group == "Progressive" else n_trad)
 
     no_fallback = stats06["sensitivity_no_fallback"]
+
+    def its_result(transition: str, outcome: str) -> dict:
+        return stats12[transition][outcome]
+
+    sf_comp = its_result("SF: Boudin to Jenkins", "composite_bias_score")
+    sf_stance = its_result("SF: Boudin to Jenkins", "score_stance")
+    sf_keywords = its_result("SF: Boudin to Jenkins", "score_keywords")
+    al_comp = its_result("Alameda: O'Malley to Price", "composite_bias_score")
+    al_stance = its_result("Alameda: O'Malley to Price", "score_stance")
+    al_keywords = its_result("Alameda: O'Malley to Price", "score_keywords")
 
     macros: list[tuple[str, str]] = [
         ("NAttributedTotal", latex_int(n_total)),
@@ -206,11 +224,48 @@ def main() -> None:
         ("NoFallbackBootDiff", latex_float(float(no_fallback["bootstrap_diff"]), digits=4, signed=True)),
         ("NoFallbackBootCiLo", latex_float(float(no_fallback["bootstrap_ci_lower"]), digits=4, signed=True)),
         ("NoFallbackBootCiHi", latex_float(float(no_fallback["bootstrap_ci_upper"]), digits=4, signed=True)),
+        ("SFItsCompLevelBeta", latex_float(float(sf_comp["coefficients"]["post"]), digits=3, signed=True)),
+        ("SFItsCompLevelP", latex_pvalue_table(float(sf_comp["p_values"]["post"]))),
+        ("SFItsCompSlopeBeta", latex_float(float(sf_comp["coefficients"]["time_after"]), digits=4, signed=True)),
+        ("SFItsCompSlopeP", latex_pvalue_table(float(sf_comp["p_values"]["time_after"]))),
+        ("SFItsCompEffect12m", latex_float(float(sf_comp["effect_at_horizon"]), digits=3, signed=True)),
+        ("SFItsCompEffectP", latex_pvalue_table(float(sf_comp["effect_at_horizon_p"]))),
+        ("SFItsStanceLevelBeta", latex_float(float(sf_stance["coefficients"]["post"]), digits=3, signed=True)),
+        ("SFItsStanceLevelP", latex_pvalue_table(float(sf_stance["p_values"]["post"]))),
+        ("SFItsStanceSlopeBeta", latex_float(float(sf_stance["coefficients"]["time_after"]), digits=4, signed=True)),
+        ("SFItsStanceSlopeP", latex_pvalue_table(float(sf_stance["p_values"]["time_after"]))),
+        ("SFItsStanceEffect12m", latex_float(float(sf_stance["effect_at_horizon"]), digits=3, signed=True)),
+        ("SFItsStanceEffectP", latex_pvalue_table(float(sf_stance["effect_at_horizon_p"]))),
+        ("SFItsKeywordsLevelBeta", latex_float(float(sf_keywords["coefficients"]["post"]), digits=3, signed=True)),
+        ("SFItsKeywordsLevelP", latex_pvalue_table(float(sf_keywords["p_values"]["post"]))),
+        ("SFItsKeywordsSlopeBeta", latex_float(float(sf_keywords["coefficients"]["time_after"]), digits=4, signed=True)),
+        ("SFItsKeywordsSlopeP", latex_pvalue_table(float(sf_keywords["p_values"]["time_after"]))),
+        ("SFItsKeywordsEffect12m", latex_float(float(sf_keywords["effect_at_horizon"]), digits=3, signed=True)),
+        ("SFItsKeywordsEffectP", latex_pvalue_table(float(sf_keywords["effect_at_horizon_p"]))),
+        ("AlItsCompLevelBeta", latex_float(float(al_comp["coefficients"]["post"]), digits=3, signed=True)),
+        ("AlItsCompLevelP", latex_pvalue_table(float(al_comp["p_values"]["post"]))),
+        ("AlItsCompSlopeBeta", latex_float(float(al_comp["coefficients"]["time_after"]), digits=4, signed=True)),
+        ("AlItsCompSlopeP", latex_pvalue_table(float(al_comp["p_values"]["time_after"]))),
+        ("AlItsCompEffect12m", latex_float(float(al_comp["effect_at_horizon"]), digits=3, signed=True)),
+        ("AlItsCompEffectP", latex_pvalue_table(float(al_comp["effect_at_horizon_p"]))),
+        ("AlItsStanceLevelBeta", latex_float(float(al_stance["coefficients"]["post"]), digits=3, signed=True)),
+        ("AlItsStanceLevelP", latex_pvalue_table(float(al_stance["p_values"]["post"]))),
+        ("AlItsStanceSlopeBeta", latex_float(float(al_stance["coefficients"]["time_after"]), digits=4, signed=True)),
+        ("AlItsStanceSlopeP", latex_pvalue_table(float(al_stance["p_values"]["time_after"]))),
+        ("AlItsStanceEffect12m", latex_float(float(al_stance["effect_at_horizon"]), digits=3, signed=True)),
+        ("AlItsStanceEffectP", latex_pvalue_table(float(al_stance["effect_at_horizon_p"]))),
+        ("AlItsKeywordsLevelBeta", latex_float(float(al_keywords["coefficients"]["post"]), digits=3, signed=True)),
+        ("AlItsKeywordsLevelP", latex_pvalue_table(float(al_keywords["p_values"]["post"]))),
+        ("AlItsKeywordsSlopeBeta", latex_float(float(al_keywords["coefficients"]["time_after"]), digits=4, signed=True)),
+        ("AlItsKeywordsSlopeP", latex_pvalue_table(float(al_keywords["p_values"]["time_after"]))),
+        ("AlItsKeywordsEffect12m", latex_float(float(al_keywords["effect_at_horizon"]), digits=3, signed=True)),
+        ("AlItsKeywordsEffectP", latex_pvalue_table(float(al_keywords["effect_at_horizon_p"]))),
     ]
 
     lines = [
         "% Auto-generated by paper/build_stats_tex.py. Do not edit by hand.",
-        "% Generated from output/06_stats_results.json, output/08_extraction_stats.json, output/04_bias_scores.parquet",
+        "% Generated from output/06_stats_results.json, output/08_extraction_stats.json,",
+        "% output/12_segmented_its_results.json, output/04_bias_scores.parquet",
     ]
     for name, value in macros:
         lines.append(f"\\newcommand{{\\{name}}}{{{value}}}")

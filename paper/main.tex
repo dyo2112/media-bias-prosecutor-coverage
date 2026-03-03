@@ -43,8 +43,8 @@
 % ── Title ───────────────────────────────────────────────────────────────
 \title{Measuring Media Bias Toward Reform Prosecutors:\\
 A Multi-Method NLP Analysis of Bay Area News Coverage, 2019--2024}
-\author{[Dvir Yogev]\\[4pt]
-\textit{[Criminal Law \& Justice Center, UC Berkeley]}}
+\author{Dvir Yogev\\[4pt]
+\textit{Criminal Law \& Justice Center, UC Berkeley}}
 \date{}
 
 % ════════════════════════════════════════════════════════════════════════
@@ -121,14 +121,14 @@ Not all articles in the corpus concern crime and criminal justice. I apply a rel
 \toprule
 Prosecutor & County & Ideology & Tenure & $n$ \\
 \midrule
-Chesa Boudin     & San Francisco & Progressive  & 2020--2022    & 5,773 \\
-Brooke Jenkins   & San Francisco & Traditional  & 2022--present & 3,207 \\
-Nancy O'Malley   & Alameda       & Traditional  & 2009--2023    & 1,497 \\
-Pamela Price     & Alameda       & Progressive  & 2023--2024    & 828   \\
-Steve Wagstaffe  & San Mateo     & Traditional  & 2010--present & 1,648 \\
+Chesa Boudin     & San Francisco & Progressive  & 2020--2022    & \NBoudin \\
+Brooke Jenkins   & San Francisco & Traditional  & 2022--present & \NJenkins \\
+Nancy O'Malley   & Alameda       & Traditional  & 2009--2023    & \NOmalley \\
+Pamela Price     & Alameda       & Progressive  & 2023--2024    & \NPrice   \\
+Steve Wagstaffe  & San Mateo     & Traditional  & 2010--present & \NWagstaffe \\
 \midrule
-\multicolumn{4}{l}{\emph{Progressive total}} & 6,601 \\
-\multicolumn{4}{l}{\emph{Traditional total}} & 6,352 \\
+\multicolumn{4}{l}{\emph{Progressive total}} & \NProgAttributed \\
+\multicolumn{4}{l}{\emph{Traditional total}} & \NTradAttributed \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -932,13 +932,13 @@ where $\beta_2$ captures an immediate level shift at transition and $\beta_3$ ca
 \toprule
 Transition & Outcome & Level shift $\beta_2$ & Slope change $\beta_3$ & 12-month net effect \\
 \midrule
-SF (Boudin $\rightarrow$ Jenkins) & Composite & $+0.024$ ($p=.248$) & $+0.0033$ ($p=.044$) & $+0.063$ ($p=.001$) \\
-SF (Boudin $\rightarrow$ Jenkins) & Stance & $+0.055$ ($p=.311$) & $+0.0122$ ($p=.002$) & $+0.201$ ($p<.001$) \\
-SF (Boudin $\rightarrow$ Jenkins) & Keywords & $+0.006$ ($p=.270$) & $+0.0018$ ($p<.001$) & $+0.028$ ($p=.002$) \\
+SF (Boudin $\rightarrow$ Jenkins) & Composite & $\SFItsCompLevelBeta$ ($p\SFItsCompLevelP$) & $\SFItsCompSlopeBeta$ ($p\SFItsCompSlopeP$) & $\SFItsCompEffect12m$ ($p\SFItsCompEffectP$) \\
+SF (Boudin $\rightarrow$ Jenkins) & Stance & $\SFItsStanceLevelBeta$ ($p\SFItsStanceLevelP$) & $\SFItsStanceSlopeBeta$ ($p\SFItsStanceSlopeP$) & $\SFItsStanceEffect12m$ ($p\SFItsStanceEffectP$) \\
+SF (Boudin $\rightarrow$ Jenkins) & Keywords & $\SFItsKeywordsLevelBeta$ ($p\SFItsKeywordsLevelP$) & $\SFItsKeywordsSlopeBeta$ ($p\SFItsKeywordsSlopeP$) & $\SFItsKeywordsEffect12m$ ($p\SFItsKeywordsEffectP$) \\
 \midrule
-Alameda (O'Malley $\rightarrow$ Price) & Composite & $-0.089$ ($p<.001$) & $+0.0020$ ($p=.505$) & $-0.065$ ($p=.025$) \\
-Alameda (O'Malley $\rightarrow$ Price) & Stance & $-0.291$ ($p<.001$) & $+0.0005$ ($p=.946$) & $-0.285$ ($p<.001$) \\
-Alameda (O'Malley $\rightarrow$ Price) & Keywords & $+0.005$ ($p=.079$) & $-0.0023$ ($p<.001$) & $-0.023$ ($p<.001$) \\
+Alameda (O'Malley $\rightarrow$ Price) & Composite & $\AlItsCompLevelBeta$ ($p\AlItsCompLevelP$) & $\AlItsCompSlopeBeta$ ($p\AlItsCompSlopeP$) & $\AlItsCompEffect12m$ ($p\AlItsCompEffectP$) \\
+Alameda (O'Malley $\rightarrow$ Price) & Stance & $\AlItsStanceLevelBeta$ ($p\AlItsStanceLevelP$) & $\AlItsStanceSlopeBeta$ ($p\AlItsStanceSlopeP$) & $\AlItsStanceEffect12m$ ($p\AlItsStanceEffectP$) \\
+Alameda (O'Malley $\rightarrow$ Price) & Keywords & $\AlItsKeywordsLevelBeta$ ($p\AlItsKeywordsLevelP$) & $\AlItsKeywordsSlopeBeta$ ($p\AlItsKeywordsSlopeP$) & $\AlItsKeywordsEffect12m$ ($p\AlItsKeywordsEffectP$) \\
 \bottomrule
 \end{tabular}
 \end{table}
