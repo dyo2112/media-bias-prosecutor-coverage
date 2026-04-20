@@ -11,12 +11,13 @@ The current publication workflow is:
 ## Current Execution Modes
 
 `run_pipeline.py` is intentionally focused on the downstream analysis stack (starts at Step 04).
+On this Windows setup, use `py -3` rather than assuming `python` is on `PATH`.
 
-- `python run_pipeline.py`
+- `py -3 run_pipeline.py`
   - Runs Steps 04-07 (bias scoring, framing, statistics, figures).
-- `python run_pipeline.py --paper`
+- `py -3 run_pipeline.py --paper`
   - Runs Steps 04-07 plus Step 10 (theme attribution), Step 12 (segmented ITS), and `paper/build_stats_tex.py`.
-- `python run_pipeline.py --paper --with-langextract`
+- `py -3 run_pipeline.py --paper --with-langextract`
   - Adds Step 08 structural extraction (Appendix A) to the paper run.
 
 Steps 01-03 (load/clean/filter/attribution) are still part of the full pipeline, but are run directly when a fresh upstream rebuild is needed.
@@ -80,7 +81,7 @@ paper/build_stats_tex.py     -> paper/generated_stats.tex
 
 Requirements:
 - Python 3.10+
-- `pip install -r requirements.txt`
+- `py -3 -m pip install -r requirements.txt`
 - `LANGEXTRACT_API_KEY` set for Steps 08 and 09
 
 ## Typical Commands
@@ -88,19 +89,19 @@ Requirements:
 Core run:
 
 ```bash
-python run_pipeline.py
+py -3 run_pipeline.py
 ```
 
 Publication lock run (recommended for manuscript refresh):
 
 ```bash
-python run_pipeline.py --paper --with-langextract
+py -3 run_pipeline.py --paper --with-langextract
 ```
 
 If extraction is resumed over multiple runs:
 
 ```bash
-python 08_langextract_analysis.py --resume --max-articles 1800 --delay 0.5
+py -3 08_langextract_analysis.py --resume --max-articles 1800 --delay 0.5
 ```
 
 ## Manuscript Build
@@ -108,7 +109,7 @@ python 08_langextract_analysis.py --resume --max-articles 1800 --delay 0.5
 Stats macros are generated from JSON outputs:
 
 ```bash
-python paper/build_stats_tex.py
+py -3 paper/build_stats_tex.py
 ```
 
 Compile manuscript:
@@ -125,4 +126,5 @@ pdflatex -interaction=nonstopmode -halt-on-error main.tex
 
 - The raw corpus TSV is not included in this repository due to licensing restrictions.
 - Output JSON files in `output/` are the source of truth for current reported values.
+- The manuscript prefers figures from `output/figures/` and falls back to tracked copies in `paper/figures/`.
 - `paper/generated_stats.tex` is generated; do not edit by hand.

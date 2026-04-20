@@ -2,19 +2,19 @@
 Run the core analysis pipeline: 04 -> 05 -> 06 -> 07.
 
 Usage:
-  python run_pipeline.py
+  py -3 run_pipeline.py
     Core analyses and figures only.
 
-  python run_pipeline.py --with-langextract
+  py -3 run_pipeline.py --with-langextract
     Core + Step 08 structural extraction (requires LANGEXTRACT_API_KEY).
 
-  python run_pipeline.py --paper
+  py -3 run_pipeline.py --paper
     Core + publication-lock extras:
       - Step 10 theme attribution
       - Step 12 segmented ITS
       - paper/build_stats_tex.py
 
-  python run_pipeline.py --paper --with-langextract
+  py -3 run_pipeline.py --paper --with-langextract
     Full publication run including structural extraction.
 
 Output is displayed live and saved to pipeline_log.txt.
@@ -27,24 +27,25 @@ import sys
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(SCRIPT_DIR, "pipeline_log.txt")
+PYTHON_EXE = sys.executable or "python"
 
 BASE_STEPS = [
-    ("", "Bias detection (Methods A,B,C,D)", ["python", "04_bias_detection.py"]),
-    ("", "Framing analysis", ["python", "05_framing_analysis.py"]),
-    ("", "Statistical analysis", ["python", "06_statistics.py"]),
-    ("", "Generating figures", ["python", "07_visualize.py"]),
+    ("", "Bias detection (Methods A,B,C,D)", [PYTHON_EXE, "04_bias_detection.py"]),
+    ("", "Framing analysis", [PYTHON_EXE, "05_framing_analysis.py"]),
+    ("", "Statistical analysis", [PYTHON_EXE, "06_statistics.py"]),
+    ("", "Generating figures", [PYTHON_EXE, "07_visualize.py"]),
 ]
 
 LANGEXTRACT_STEP = (
     "",
     "langextract grounded extraction",
-    ["python", "08_langextract_analysis.py"],
+    [PYTHON_EXE, "08_langextract_analysis.py"],
 )
 
 PAPER_STEPS = [
-    ("", "Theme attribution analysis", ["python", "10_theme_attribution.py"]),
-    ("", "Segmented ITS robustness", ["python", "12_segmented_its.py"]),
-    ("", "Generate manuscript stats macros", ["python", "paper/build_stats_tex.py"]),
+    ("", "Theme attribution analysis", [PYTHON_EXE, "10_theme_attribution.py"]),
+    ("", "Segmented ITS robustness", [PYTHON_EXE, "12_segmented_its.py"]),
+    ("", "Generate manuscript stats macros", [PYTHON_EXE, "paper/build_stats_tex.py"]),
 ]
 
 

@@ -2,6 +2,7 @@
 output/*.parquet
 output/*.jsonl
 output/*.log
+output/*.html
 output/figures/
 output/nul
 output/desktop.ini
@@ -33,11 +34,14 @@ paper/nul
 paper/texput.log
 paper/desktop.ini
 paper/figures/desktop.ini
+paper/.claude/
+paper/litreture to add/
 
 # Windows
 desktop.ini
 Thumbs.db
 *.lnk
+.claude/
 
 # API keys and secrets
 run_extraction.bat

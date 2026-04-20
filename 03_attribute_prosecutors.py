@@ -324,8 +324,15 @@ def main() -> None:
     # Save all relevant articles with attribution columns
     save_parquet(df, OUTPUT_DIR / "03_all_relevant_attributed.parquet")
 
-    # Save only articles with prosecutor mentions for downstream analysis
-    attributed = df[df["has_prosecutor_mention"]].copy()
+    # Save only rows resolved to a specific prosecutor for downstream analysis.
+    unresolved = df[df["has_prosecutor_mention"] & df["primary_prosecutor"].isna()]
+    if len(unresolved) > 0:
+        logger.info(
+            f"Articles with prosecutor mentions but no resolved primary prosecutor: "
+            f"{len(unresolved):,}"
+        )
+
+    attributed = df[df["primary_prosecutor"].notna()].copy()
     save_parquet(attributed, ATTRIBUTED_PARQUET)
 
     logger.info("Done.")
