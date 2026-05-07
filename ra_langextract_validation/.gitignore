@@ -1,7 +1,6 @@
-generated/*.csv
-completed/*.csv
-summary/*.csv
-summary/*.md
+generated/*
+completed/*
+summary/*
 !generated/.gitkeep
 !completed/.gitkeep
 !summary/.gitkeep
