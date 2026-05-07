@@ -8,6 +8,10 @@ structural extraction only:
 
 Do not use this folder for Step 09 / Appendix B (`09_bias_extraction.py`).
 
+If you cloned this repository from GitHub and cannot find the article-level
+files, see `DATA_ACCESS.md` first. Those files are intentionally excluded from
+GitHub because they contain licensed article text or article excerpts.
+
 ## What This Folder Is For
 
 The goal is to help a research assistant validate the structural extraction
@@ -102,6 +106,9 @@ Why this matters:
 
 - `ANNOTATION_GUIDE.md`
   - Coding rules and label definitions.
+- `DATA_ACCESS.md`
+  - Explains where the article-level files and generated RA packets should come
+    from.
 - `scripts/build_ra_packets.py`
   - Generates local review packets from the licensed `output/` files.
 - `scripts/summarize_ra_labels.py`
