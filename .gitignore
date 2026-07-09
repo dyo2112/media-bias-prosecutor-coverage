@@ -6,6 +6,8 @@ output/*.html
 output/figures/
 output/nul
 output/desktop.ini
+# Archived pre-fix snapshots (licensed article text; kept locally for replication)
+output/archive_*/
 
 # Keep small stats/results files
 !output/06_stats_results.json

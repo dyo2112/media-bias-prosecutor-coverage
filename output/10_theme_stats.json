@@ -1,218 +1,238 @@
 {
   "overall": {
-    "progressive_n": 6601,
-    "progressive_mean": 1.8047129222845024,
-    "progressive_sd": 3.0703960528508007,
-    "traditional_n": 6352,
-    "traditional_mean": 0.7428148614609571,
-    "traditional_sd": 1.7125796879483157,
-    "welch_t": 24.42661947871136,
-    "welch_p": 3.4229332188177723e-128,
-    "mannwhitney_u": 24426608.5,
-    "mannwhitney_p": 6.083347973464501e-79,
-    "cohens_d": 0.42501218970415605,
-    "bootstrap_diff": 1.0618980608235453,
-    "bootstrap_ci_lower": 0.9783718511528576,
-    "bootstrap_ci_upper": 1.147118760939778
+    "progressive_n": 6585,
+    "progressive_mean": 1.6891647684130602,
+    "progressive_sd": 2.9945398267059615,
+    "traditional_n": 6242,
+    "traditional_mean": 0.6709708426786286,
+    "traditional_sd": 1.6508389401537786,
+    "welch_t": 24.009908261883076,
+    "welch_p": 5.145500946678921e-124,
+    "mannwhitney_u": 23845807.0,
+    "mannwhitney_p": 5.830859388156359e-77,
+    "cohens_d": 0.4181313326713896,
+    "bootstrap_diff": 1.0181939257344315,
+    "bootstrap_ci_lower": 0.9363110831309785,
+    "bootstrap_ci_upper": 1.1002998275453932
+  },
+  "overall_noquote": {
+    "progressive_mean": 1.5415854214123008,
+    "traditional_mean": 0.6002723486062159,
+    "welch_t": 23.182100444655383,
+    "welch_p": 6.263772610771347e-116,
+    "cohens_d": 0.4036187478616008,
+    "bootstrap_diff": 0.9413130728060849,
+    "bootstrap_ci_lower": 0.8635094452683795,
+    "bootstrap_ci_upper": 1.0197692210859055,
+    "note": "Theme matches inside quoted speech excluded; compares the outlet's own voice across prosecutor types."
   },
   "theme_presence": {
-    "progressive_any_theme_pct": 0.4311467959400091,
-    "traditional_any_theme_pct": 0.30636020151133503
+    "progressive_any_theme_pct": 0.4054669703872437,
+    "traditional_any_theme_pct": 0.2800384492149952
   },
   "per_theme": {
     "crime_rising": {
-      "progressive_n": 1387,
-      "progressive_rate": 0.21011967883653992,
-      "traditional_n": 777,
-      "traditional_rate": 0.12232367758186398,
-      "risk_ratio": 1.7177351350961412,
-      "chi2": 178.67843357502036,
-      "p_value": 9.418410972779593e-41,
-      "cramers_v": 0.11744942244221383
+      "progressive_n": 1364,
+      "progressive_rate": 0.20713743356112377,
+      "traditional_n": 717,
+      "traditional_rate": 0.11486702979814162,
+      "risk_ratio": 1.8032801398724332,
+      "chi2": 200.05089767990353,
+      "p_value": 2.0357521008982752e-45,
+      "cramers_v": 0.12488426003047932,
+      "p_value_bh": 9.160884454042238e-45
     },
     "releasing_criminals": {
-      "progressive_n": 450,
-      "progressive_rate": 0.06817148916830783,
-      "traditional_n": 459,
-      "traditional_rate": 0.07226070528967254,
-      "risk_ratio": 0.9434102379021597,
-      "chi2": 0.7680531484170247,
-      "p_value": 0.38082000105737646,
-      "cramers_v": 0.007700349800287415
+      "progressive_n": 434,
+      "progressive_rate": 0.06590736522399393,
+      "traditional_n": 449,
+      "traditional_rate": 0.07193207305350849,
+      "risk_ratio": 0.9162444849179735,
+      "chi2": 1.7217666119419563,
+      "p_value": 0.1894658019686646,
+      "cramers_v": 0.01158576175374381,
+      "p_value_bh": 0.21314902721474768
     },
     "victim_neglect": {
       "progressive_n": 338,
-      "progressive_rate": 0.05120436297530677,
+      "progressive_rate": 0.051328777524677294,
       "traditional_n": 429,
-      "traditional_rate": 0.06753778337531487,
-      "risk_ratio": 0.7581587730050083,
-      "chi2": 15.210209481576987,
-      "p_value": 9.618201820473105e-05,
-      "cramers_v": 0.03426749948573633
+      "traditional_rate": 0.06872797180390901,
+      "risk_ratio": 0.7468396953590575,
+      "chi2": 16.947114492662052,
+      "p_value": 3.84356957090088e-05,
+      "cramers_v": 0.03634840299090519,
+      "p_value_bh": 6.918425227621585e-05
     },
     "police_conflict": {
-      "progressive_n": 21,
-      "progressive_rate": 0.003181336161187699,
-      "traditional_n": 5,
-      "traditional_rate": 0.0007871536523929471,
-      "risk_ratio": 4.041569459172853,
-      "chi2": 8.106014051480896,
-      "p_value": 0.004411863335408008,
-      "cramers_v": 0.025016036007984153
+      "progressive_n": 18,
+      "progressive_rate": 0.002733485193621868,
+      "traditional_n": 3,
+      "traditional_rate": 0.0004806151874399231,
+      "risk_ratio": 5.6874715261959,
+      "chi2": 8.619882104077423,
+      "p_value": 0.0033251336630349755,
+      "cramers_v": 0.02592317045945777,
+      "p_value_bh": 0.0049877004945524635
     },
     "office_dysfunction": {
       "progressive_n": 2,
-      "progressive_rate": 0.0003029843963035904,
+      "progressive_rate": 0.00030372057706909645,
       "traditional_n": 1,
-      "traditional_rate": 0.00015743073047858942,
-      "risk_ratio": 1.924556885320406,
+      "traditional_rate": 0.00016020506247997436,
+      "risk_ratio": 1.8958238420653,
       "chi2": 0.0,
       "p_value": 1.0,
-      "cramers_v": 0.0
+      "cramers_v": 0.0,
+      "p_value_bh": 1.0
     },
     "soft_on_crime": {
-      "progressive_n": 167,
-      "progressive_rate": 0.025299197091349795,
-      "traditional_n": 43,
-      "traditional_rate": 0.006769521410579345,
-      "risk_ratio": 3.7372209284710207,
-      "chi2": 68.5274278975873,
-      "p_value": 1.2512512256205199e-16,
-      "cramers_v": 0.07273560120722132
+      "progressive_n": 150,
+      "progressive_rate": 0.022779043280182234,
+      "traditional_n": 37,
+      "traditional_rate": 0.0059275873117590515,
+      "risk_ratio": 3.842886166348581,
+      "chi2": 62.17428892052144,
+      "p_value": 3.143656313084613e-15,
+      "cramers_v": 0.06962141827058951,
+      "p_value_bh": 9.43096893925384e-15
     },
     "case_dismissal": {
-      "progressive_n": 411,
-      "progressive_rate": 0.06226329344038782,
-      "traditional_n": 431,
-      "traditional_rate": 0.06785264483627204,
-      "risk_ratio": 0.9176251506574093,
-      "chi2": 1.5731857295936098,
-      "p_value": 0.20974497106941967,
-      "cramers_v": 0.011020589258330724
+      "progressive_n": 295,
+      "progressive_rate": 0.044798785117691725,
+      "traditional_n": 332,
+      "traditional_rate": 0.05318808074335149,
+      "risk_ratio": 0.8422711346525052,
+      "chi2": 4.672197995113497,
+      "p_value": 0.030654671040095036,
+      "cramers_v": 0.019085259614916455,
+      "p_value_bh": 0.03941314848012219
     },
     "recall": {
-      "progressive_n": 1287,
-      "progressive_rate": 0.1949704590213604,
-      "traditional_n": 308,
-      "traditional_rate": 0.04848866498740554,
-      "risk_ratio": 4.020949206830134,
-      "chi2": 641.9171038758486,
-      "p_value": 1.2793772322236172e-141,
-      "cramers_v": 0.2226149317759221
+      "progressive_n": 1206,
+      "progressive_rate": 0.18314350797266515,
+      "traditional_n": 256,
+      "traditional_rate": 0.04101249599487344,
+      "risk_ratio": 4.465553815489749,
+      "chi2": 639.6044162908103,
+      "p_value": 4.0735557607453377e-141,
+      "cramers_v": 0.22330229136875857,
+      "p_value_bh": 3.666200184670804e-140
     },
     "public_safety_failure": {
-      "progressive_n": 221,
-      "progressive_rate": 0.033479775791546734,
-      "traditional_n": 99,
-      "traditional_rate": 0.015585642317380353,
-      "risk_ratio": 2.1481165235141906,
-      "chi2": 42.27905630013207,
-      "p_value": 7.913549632222577e-11,
-      "cramers_v": 0.05713174113387578
+      "progressive_n": 156,
+      "progressive_rate": 0.02369020501138952,
+      "traditional_n": 54,
+      "traditional_rate": 0.008651073373918615,
+      "risk_ratio": 2.7384122163165445,
+      "chi2": 44.077401095205644,
+      "p_value": 3.1564417721468574e-11,
+      "cramers_v": 0.058619949832593186,
+      "p_value_bh": 7.10199398733043e-11
     }
   },
   "paired_county": {
     "San Francisco": {
       "progressive": "Chesa Boudin",
       "traditional": "Brooke Jenkins",
-      "n_prog": 5773,
-      "n_trad": 3207,
-      "mean_prog": 1.7759102719556557,
-      "mean_trad": 1.009432491425008,
-      "welch_t": 13.933389448878904,
-      "welch_p": 1.194151518335079e-43,
-      "cohens_d": 0.27817884386687775,
-      "bootstrap_diff": 0.7664777805306477,
-      "bootstrap_ci_lower": 0.65763390553241,
-      "bootstrap_ci_upper": 0.8725680192287881,
+      "n_prog": 5783,
+      "n_trad": 3097,
+      "mean_prog": 1.664682690644994,
+      "mean_trad": 0.943626089764288,
+      "welch_t": 13.271151663561303,
+      "welch_p": 8.688515940365155e-40,
+      "cohens_d": 0.2666843603932085,
+      "bootstrap_diff": 0.7210566008807061,
+      "bootstrap_ci_lower": 0.6129946658145518,
+      "bootstrap_ci_upper": 0.8283780992616895,
       "per_theme_rates": {
         "crime_rising": {
-          "progressive_rate": 0.21323402043997922,
-          "traditional_rate": 0.13813532896788275
+          "progressive_rate": 0.20888812035275808,
+          "traditional_rate": 0.13077171456247982
         },
         "releasing_criminals": {
-          "progressive_rate": 0.06998094578208904,
-          "traditional_rate": 0.09448082319925163
+          "progressive_rate": 0.06761196610755663,
+          "traditional_rate": 0.09557636422344204
         },
         "victim_neglect": {
-          "progressive_rate": 0.05265892949939373,
-          "traditional_rate": 0.054879950109136266
+          "progressive_rate": 0.0525678713470517,
+          "traditional_rate": 0.05682918953826283
         },
         "police_conflict": {
-          "progressive_rate": 0.0034644032565390613,
-          "traditional_rate": 0.0006236357966947302
+          "progressive_rate": 0.0029396507003285493,
+          "traditional_rate": 0.00032289312237649337
         },
         "office_dysfunction": {
-          "progressive_rate": 0.00017322016282695306,
+          "progressive_rate": 0.00017292062943109114,
           "traditional_rate": 0.0
         },
         "soft_on_crime": {
-          "progressive_rate": 0.021998960679023037,
-          "traditional_rate": 0.012472715933894606
+          "progressive_rate": 0.020058793014006572,
+          "traditional_rate": 0.011624152405553761
         },
         "case_dismissal": {
-          "progressive_rate": 0.06149315780356834,
-          "traditional_rate": 0.08450265045213595
+          "progressive_rate": 0.044959363652083695,
+          "traditional_rate": 0.07103648692282855
         },
         "recall": {
-          "progressive_rate": 0.18846353715572492,
-          "traditional_rate": 0.08481446835048331
+          "progressive_rate": 0.17603320076085077,
+          "traditional_rate": 0.07620277688085243
         },
         "public_safety_failure": {
-          "progressive_rate": 0.033777931751255846,
-          "traditional_rate": 0.015279077019020891
+          "progressive_rate": 0.024727650008646032,
+          "traditional_rate": 0.010332579916047788
         }
       }
     },
     "Alameda": {
       "progressive": "Pamela Price",
       "traditional": "Nancy O'Malley",
-      "n_prog": 828,
+      "n_prog": 802,
       "n_trad": 1497,
-      "mean_prog": 2.0055314009661833,
-      "mean_trad": 0.5738209752839011,
-      "welch_t": 12.269274577238768,
-      "welch_p": 2.881950157436503e-32,
-      "cohens_d": 0.6591194050654703,
-      "bootstrap_diff": 1.4317104256822821,
-      "bootstrap_ci_lower": 1.2044104652541796,
-      "bootstrap_ci_upper": 1.6556594202898551,
+      "mean_prog": 1.8656982543640896,
+      "mean_trad": 0.47455577822311296,
+      "welch_t": 12.272951813597096,
+      "welch_p": 3.6153597471538e-32,
+      "cohens_d": 0.6795247349585861,
+      "bootstrap_diff": 1.3911424761409767,
+      "bootstrap_ci_lower": 1.1691323195018464,
+      "bootstrap_ci_upper": 1.6173109764833071,
       "per_theme_rates": {
         "crime_rising": {
-          "progressive_rate": 0.18840579710144928,
-          "traditional_rate": 0.12358049432197729
+          "progressive_rate": 0.19451371571072318,
+          "traditional_rate": 0.11556446225784903
         },
         "releasing_criminals": {
-          "progressive_rate": 0.05555555555555555,
-          "traditional_rate": 0.07348029392117568
+          "progressive_rate": 0.05361596009975062,
+          "traditional_rate": 0.07214428857715431
         },
         "victim_neglect": {
-          "progressive_rate": 0.04106280193236715,
+          "progressive_rate": 0.04239401496259352,
           "traditional_rate": 0.053440213760855046
         },
         "police_conflict": {
-          "progressive_rate": 0.0012077294685990338,
-          "traditional_rate": 0.002004008016032064
+          "progressive_rate": 0.0012468827930174563,
+          "traditional_rate": 0.0013360053440213762
         },
         "office_dysfunction": {
-          "progressive_rate": 0.0012077294685990338,
+          "progressive_rate": 0.0012468827930174563,
           "traditional_rate": 0.0006680026720106881
         },
         "soft_on_crime": {
-          "progressive_rate": 0.04830917874396135,
-          "traditional_rate": 0.002004008016032064
+          "progressive_rate": 0.04239401496259352,
+          "traditional_rate": 0.0006680026720106881
         },
         "case_dismissal": {
-          "progressive_rate": 0.06763285024154589,
-          "traditional_rate": 0.07615230460921844
+          "progressive_rate": 0.043640897755610975,
+          "traditional_rate": 0.052772211088844355
         },
         "recall": {
-          "progressive_rate": 0.24033816425120774,
-          "traditional_rate": 0.014696058784235137
+          "progressive_rate": 0.2344139650872818,
+          "traditional_rate": 0.009352037408149633
         },
         "public_safety_failure": {
-          "progressive_rate": 0.03140096618357488,
-          "traditional_rate": 0.02137608550434202
+          "progressive_rate": 0.016209476309226933,
+          "traditional_rate": 0.008016032064128256
         }
       }
     }
@@ -221,122 +241,122 @@
     "Chesa Boudin": {
       "ideology": "Progressive",
       "county": "San Francisco",
-      "n": 5773,
-      "mean_score": 1.7759102719556557,
-      "any_theme_pct": 0.4271609215312662,
+      "n": 5783,
+      "mean_score": 1.664682690644994,
+      "any_theme_pct": 0.4004841777624071,
       "theme_rates": {
-        "crime_rising": 0.21323402043997922,
-        "releasing_criminals": 0.06998094578208904,
-        "victim_neglect": 0.05265892949939373,
-        "police_conflict": 0.0034644032565390613,
-        "office_dysfunction": 0.00017322016282695306,
-        "soft_on_crime": 0.021998960679023037,
-        "case_dismissal": 0.06149315780356834,
-        "recall": 0.18846353715572492,
-        "public_safety_failure": 0.033777931751255846
+        "crime_rising": 0.20888812035275808,
+        "releasing_criminals": 0.06761196610755663,
+        "victim_neglect": 0.0525678713470517,
+        "police_conflict": 0.0029396507003285493,
+        "office_dysfunction": 0.00017292062943109114,
+        "soft_on_crime": 0.020058793014006572,
+        "case_dismissal": 0.044959363652083695,
+        "recall": 0.17603320076085077,
+        "public_safety_failure": 0.024727650008646032
       }
     },
     "Brooke Jenkins": {
       "ideology": "Traditional",
       "county": "San Francisco",
-      "n": 3207,
-      "mean_score": 1.009432491425008,
-      "any_theme_pct": 0.34455877767383847,
+      "n": 3097,
+      "mean_score": 0.943626089764288,
+      "any_theme_pct": 0.32386180174362283,
       "theme_rates": {
-        "crime_rising": 0.13813532896788275,
-        "releasing_criminals": 0.09448082319925163,
-        "victim_neglect": 0.054879950109136266,
-        "police_conflict": 0.0006236357966947302,
+        "crime_rising": 0.13077171456247982,
+        "releasing_criminals": 0.09557636422344204,
+        "victim_neglect": 0.05682918953826283,
+        "police_conflict": 0.00032289312237649337,
         "office_dysfunction": 0.0,
-        "soft_on_crime": 0.012472715933894606,
-        "case_dismissal": 0.08450265045213595,
-        "recall": 0.08481446835048331,
-        "public_safety_failure": 0.015279077019020891
+        "soft_on_crime": 0.011624152405553761,
+        "case_dismissal": 0.07103648692282855,
+        "recall": 0.07620277688085243,
+        "public_safety_failure": 0.010332579916047788
       }
     },
     "Nancy O'Malley": {
       "ideology": "Traditional",
       "county": "Alameda",
       "n": 1497,
-      "mean_score": 0.5738209752839011,
-      "any_theme_pct": 0.2972611890447562,
+      "mean_score": 0.47455577822311296,
+      "any_theme_pct": 0.25384101536406145,
       "theme_rates": {
-        "crime_rising": 0.12358049432197729,
-        "releasing_criminals": 0.07348029392117568,
+        "crime_rising": 0.11556446225784903,
+        "releasing_criminals": 0.07214428857715431,
         "victim_neglect": 0.053440213760855046,
-        "police_conflict": 0.002004008016032064,
+        "police_conflict": 0.0013360053440213762,
         "office_dysfunction": 0.0006680026720106881,
-        "soft_on_crime": 0.002004008016032064,
-        "case_dismissal": 0.07615230460921844,
-        "recall": 0.014696058784235137,
-        "public_safety_failure": 0.02137608550434202
+        "soft_on_crime": 0.0006680026720106881,
+        "case_dismissal": 0.052772211088844355,
+        "recall": 0.009352037408149633,
+        "public_safety_failure": 0.008016032064128256
       }
     },
     "Pamela Price": {
       "ideology": "Progressive",
       "county": "Alameda",
-      "n": 828,
-      "mean_score": 2.0055314009661833,
-      "any_theme_pct": 0.45893719806763283,
+      "n": 802,
+      "mean_score": 1.8656982543640896,
+      "any_theme_pct": 0.44139650872817954,
       "theme_rates": {
-        "crime_rising": 0.18840579710144928,
-        "releasing_criminals": 0.05555555555555555,
-        "victim_neglect": 0.04106280193236715,
-        "police_conflict": 0.0012077294685990338,
-        "office_dysfunction": 0.0012077294685990338,
-        "soft_on_crime": 0.04830917874396135,
-        "case_dismissal": 0.06763285024154589,
-        "recall": 0.24033816425120774,
-        "public_safety_failure": 0.03140096618357488
+        "crime_rising": 0.19451371571072318,
+        "releasing_criminals": 0.05361596009975062,
+        "victim_neglect": 0.04239401496259352,
+        "police_conflict": 0.0012468827930174563,
+        "office_dysfunction": 0.0012468827930174563,
+        "soft_on_crime": 0.04239401496259352,
+        "case_dismissal": 0.043640897755610975,
+        "recall": 0.2344139650872818,
+        "public_safety_failure": 0.016209476309226933
       }
     },
     "Steve Wagstaffe": {
       "ideology": "Traditional",
       "county": "San Mateo",
       "n": 1648,
-      "mean_score": 0.37748786407766993,
-      "any_theme_pct": 0.24029126213592233,
+      "mean_score": 0.337002427184466,
+      "any_theme_pct": 0.22148058252427186,
       "theme_rates": {
-        "crime_rising": 0.0904126213592233,
-        "releasing_criminals": 0.027912621359223302,
+        "crime_rising": 0.08434466019417476,
+        "releasing_criminals": 0.027305825242718445,
         "victim_neglect": 0.1049757281553398,
         "police_conflict": 0.0,
         "office_dysfunction": 0.0,
         "soft_on_crime": 0.0,
-        "case_dismissal": 0.027912621359223302,
-        "recall": 0.00849514563106796,
-        "public_safety_failure": 0.010922330097087379
+        "case_dismissal": 0.020024271844660196,
+        "recall": 0.0036407766990291263,
+        "public_safety_failure": 0.006067961165048544
       }
     }
   },
   "method_agreement": {
     "distribution": {
-      "0": 8161,
-      "1": 2804,
-      "2": 735,
-      "3": 1016,
-      "4": 237
+      "0": 8409,
+      "1": 2732,
+      "2": 538,
+      "3": 970,
+      "4": 178
     },
-    "scored_articles": 4792,
-    "multi_method_articles": 1988,
-    "multi_method_pct": 0.41485809682804675
+    "scored_articles": 4418,
+    "multi_method_articles": 1686,
+    "multi_method_pct": 0.3816206428248076
   },
   "per_method": {
     "dictionary": {
-      "detected": 1627,
-      "pct": 0.12560796726627035
+      "detected": 1391,
+      "pct": 0.10844312777734466
     },
     "regex": {
-      "detected": 1638,
-      "pct": 0.1264571913842353
+      "detected": 1455,
+      "pct": 0.11343260310282996
     },
     "criticism": {
-      "detected": 1029,
-      "pct": 0.07944105612599398
+      "detected": 624,
+      "pct": 0.04864738442348172
     },
     "cooccurrence": {
-      "detected": 3976,
-      "pct": 0.30695591754805834
+      "detected": 3960,
+      "pct": 0.30872378576440324
     }
   }
 }

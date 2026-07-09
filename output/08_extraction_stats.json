@@ -1,152 +1,153 @@
 {
-  "mean_n_claims_progressive": 1.6655052264808363,
-  "mean_n_claims_traditional": 1.2734571788413098,
-  "mean_n_sources_progressive": 6.287532192092107,
-  "mean_n_sources_traditional": 6.0813916876574305,
-  "mean_n_causal_progressive": 0.6438418421451295,
-  "mean_n_causal_traditional": 0.4149874055415617,
-  "mean_n_policy_actions_progressive": 2.1193758521436146,
-  "mean_n_policy_actions_traditional": 1.9510390428211586,
-  "mean_n_comparisons_progressive": 0.26617179215270415,
-  "mean_n_comparisons_traditional": 0.1473551637279597,
+  "n_error_articles_excluded": 6,
+  "mean_n_claims_progressive": 1.677296886864085,
+  "mean_n_claims_traditional": 1.2735728030788966,
+  "mean_n_sources_progressive": 6.313895216400911,
+  "mean_n_sources_traditional": 6.127164849262348,
+  "mean_n_causal_progressive": 0.6463173880030372,
+  "mean_n_causal_traditional": 0.41805644644002565,
+  "mean_n_policy_actions_progressive": 2.128777524677297,
+  "mean_n_policy_actions_traditional": 1.9661642078255293,
+  "mean_n_comparisons_progressive": 0.2677296886864085,
+  "mean_n_comparisons_traditional": 0.14849262347658757,
   "source_type_distribution": {
     "Progressive": {
-      "police": 4865,
-      "victim": 1013,
-      "defense_attorney": 2798,
-      "prosecutor": 13743,
-      "politician": 4152,
-      "community_member": 5083,
-      "journalist": 2997,
-      "expert": 3193,
-      "advocacy_group": 2858,
-      "other_or_missing": 802,
-      "total": 41504
+      "police": 4868,
+      "victim": 1020,
+      "defense_attorney": 2795,
+      "prosecutor": 13752,
+      "politician": 4176,
+      "community_member": 5104,
+      "journalist": 3002,
+      "expert": 3187,
+      "advocacy_group": 2869,
+      "other_or_missing": 804,
+      "total": 41577
     },
     "Traditional": {
-      "police": 4481,
-      "victim": 941,
-      "defense_attorney": 3573,
-      "prosecutor": 16283,
-      "politician": 2704,
-      "community_member": 4347,
-      "journalist": 1885,
-      "expert": 2252,
-      "advocacy_group": 1181,
-      "other_or_missing": 982,
-      "total": 38629
+      "police": 4456,
+      "victim": 932,
+      "defense_attorney": 3557,
+      "prosecutor": 16166,
+      "politician": 2629,
+      "community_member": 4275,
+      "journalist": 1858,
+      "expert": 2223,
+      "advocacy_group": 1136,
+      "other_or_missing": 977,
+      "total": 38209
     }
   },
-  "source_type_chi2": 1720.2661140743894,
+  "source_type_chi2": 1802.1093791316816,
   "source_type_chi2_p": 0.0,
   "source_type_chi2_dof": 9,
   "source_stance_distribution": {
     "Progressive": {
-      "critical": 11199,
-      "supportive": 9355,
-      "neutral": 20883
+      "critical": 11250,
+      "supportive": 9375,
+      "neutral": 20885
     },
     "Traditional": {
-      "critical": 8136,
-      "supportive": 6017,
-      "neutral": 24401
+      "critical": 7985,
+      "supportive": 5925,
+      "neutral": 24224
     }
   },
   "causal_direction_distribution": {
     "Progressive": {
-      "prosecutor_caused_harm": 2739,
-      "prosecutor_helped": 999,
+      "prosecutor_caused_harm": 2743,
+      "prosecutor_helped": 1001,
       "ambiguous": 507
     },
     "Traditional": {
-      "prosecutor_caused_harm": 1544,
-      "prosecutor_helped": 795,
-      "ambiguous": 290
+      "prosecutor_caused_harm": 1527,
+      "prosecutor_helped": 784,
+      "ambiguous": 289
     }
   },
   "claim_type_distribution": {
     "Progressive": {
-      "performance": 2985,
-      "policy": 3190,
-      "character": 2762,
-      "competence": 2047
+      "performance": 2995,
+      "policy": 3199,
+      "character": 2788,
+      "competence": 2053
     },
     "Traditional": {
-      "performance": 1954,
-      "policy": 1958,
-      "character": 2314,
-      "competence": 1860
+      "performance": 1921,
+      "policy": 1929,
+      "character": 2260,
+      "competence": 1829
     }
   },
   "policy_action_framing": {
     "Progressive": {
-      "positive": 3798,
-      "negative": 2034,
-      "neutral": 8156
+      "positive": 3799,
+      "negative": 2048,
+      "neutral": 8169
     },
     "Traditional": {
-      "positive": 2421,
-      "negative": 1565,
-      "neutral": 8401
+      "positive": 2377,
+      "negative": 1541,
+      "neutral": 8337
     }
   },
   "comparison_direction": {
     "Progressive": {
-      "current": 784,
-      "predecessor": 136,
-      "neither": 750
+      "current": 787,
+      "predecessor": 137,
+      "neither": 752
     },
     "Traditional": {
-      "current": 426,
-      "predecessor": 75,
-      "neither": 387
+      "current": 421,
+      "predecessor": 73,
+      "neither": 384
     }
   },
   "per_prosecutor": {
     "Chesa Boudin": {
-      "n_articles": 5773,
-      "mean_claims": 1.597263121427334,
-      "mean_sources": 6.131820543911311,
-      "mean_causal": 0.6407413822968994,
-      "mean_policy_actions": 2.027022345401005,
-      "mean_comparisons": 0.2589641434262948,
-      "mean_total_extractions": 10.655811536462844
+      "n_articles": 5783,
+      "mean_claims": 1.6045305204910947,
+      "mean_sources": 6.1392011066920285,
+      "mean_causal": 0.6418813764482103,
+      "mean_policy_actions": 2.030779872038734,
+      "mean_comparisons": 0.2609372298115165,
+      "mean_total_extractions": 10.677330105481584
     },
     "Brooke Jenkins": {
-      "n_articles": 3207,
-      "mean_claims": 1.640473963205488,
-      "mean_sources": 6.270034299968819,
-      "mean_causal": 0.5522294979731837,
-      "mean_policy_actions": 2.133146242594325,
-      "mean_comparisons": 0.20174618023074525,
-      "mean_total_extractions": 10.79763018397256
+      "n_articles": 3095,
+      "mean_claims": 1.6523424878836834,
+      "mean_sources": 6.361227786752827,
+      "mean_causal": 0.562843295638126,
+      "mean_policy_actions": 2.1676898222940224,
+      "mean_comparisons": 0.20581583198707593,
+      "mean_total_extractions": 10.949919224555735
     },
     "Nancy O'Malley": {
-      "n_articles": 1497,
-      "mean_claims": 1.3473613894455578,
-      "mean_sources": 5.990647962591851,
-      "mean_causal": 0.3680694722778891,
-      "mean_policy_actions": 2.1750167000668004,
-      "mean_comparisons": 0.13293253173012692,
-      "mean_total_extractions": 10.014028056112224
+      "n_articles": 1495,
+      "mean_claims": 1.3491638795986622,
+      "mean_sources": 5.998662207357859,
+      "mean_causal": 0.368561872909699,
+      "mean_policy_actions": 2.177926421404682,
+      "mean_comparisons": 0.1331103678929766,
+      "mean_total_extractions": 10.02742474916388
     },
     "Pamela Price": {
-      "n_articles": 828,
-      "mean_claims": 2.141304347826087,
-      "mean_sources": 7.3731884057971016,
-      "mean_causal": 0.6654589371980676,
-      "mean_policy_actions": 2.763285024154589,
-      "mean_comparisons": 0.3164251207729469,
-      "mean_total_extractions": 13.259661835748792
+      "n_articles": 802,
+      "mean_claims": 2.201995012468828,
+      "mean_sources": 7.5735660847880295,
+      "mean_causal": 0.6783042394014963,
+      "mean_policy_actions": 2.8354114713216956,
+      "mean_comparisons": 0.3167082294264339,
+      "mean_total_extractions": 13.605985037406484
     },
     "Steve Wagstaffe": {
-      "n_articles": 1648,
-      "mean_claims": 0.49211165048543687,
-      "mean_sources": 5.796723300970874,
-      "mean_causal": 0.19053398058252427,
-      "mean_policy_actions": 1.3932038834951457,
-      "mean_comparisons": 0.05461165048543689,
-      "mean_total_extractions": 7.927184466019417
+      "n_articles": 1646,
+      "mean_claims": 0.49270959902794653,
+      "mean_sources": 5.8037667071688945,
+      "mean_causal": 0.19076549210206561,
+      "mean_policy_actions": 1.3948967193195625,
+      "mean_comparisons": 0.054678007290400975,
+      "mean_total_extractions": 7.93681652490887
     }
   }
 }
