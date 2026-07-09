@@ -84,6 +84,8 @@ BIAS_EXTRACTION_PROMPT = textwrap.dedent("""\
        Attributes:
          language_type (pejorative_label|scare_quotes|presuppositional_verb|hyperbole|ideological_framing|dehumanizing)
          target (prosecutor|prosecutor_policy|prosecutor_supporters|other)
+         valence (favorable|unfavorable) — does the loaded language cast
+           its target in a favorable or unfavorable light? REQUIRED.
          position (headline_or_lede|body|closing)
 
     4. missing_context: Important context that is conspicuously absent
@@ -106,33 +108,35 @@ BIAS_EXTRACTION_PROMPT = textwrap.dedent("""\
     Extract text spans in order of appearance. Do not paraphrase.""")
 
 
-# Few-shot examples — three diverse examples calibrating the model
+# Few-shot examples — three diverse examples calibrating the model.
+# All prosecutors, counties, and sources are FICTIONAL to avoid contaminating
+# extraction with priors about the real study prosecutors. The anti-prosecutor
+# and pro-prosecutor examples carry comparable extraction counts (5 each) so
+# neither slant direction is implicitly taught to be denser.
 BIAS_FEW_SHOT_EXAMPLES = [
-    # Example 1: Heavily biased anti-Boudin article (8 extractions)
-    # Teaches the full range of bias indicators
+    # Example 1: Heavily biased article AGAINST a prosecutor (5 extractions)
+    # Teaches the core anti-prosecutor bias indicators
     lx.data.ExampleData(
         text=(
-            "San Francisco's failed experiment: How Chesa Boudin let criminals "
-            "run wild. Since the radical progressive prosecutor took office, "
-            "residents say the city has become unrecognizable. Car break-ins "
-            "are rampant, shoplifters brazenly clear shelves with impunity, "
-            "and violent offenders walk free hours after arrest. 'He cares "
-            "more about criminals than victims,' said retired officer Jim "
-            "Walsh, who spent 30 years on the force. Walsh described case "
-            "after case of suspects released without charges. A business "
-            "owner on Market Street, who asked not to be named for fear of "
-            "retaliation, said Boudin's policies have destroyed the neighborhood. "
-            "Critics point to a 12% rise in property crime, though experts "
-            "note similar trends across major cities regardless of prosecutor "
-            "ideology. Boudin's office did not respond to requests for comment."
+            "Kern Valley County's failed experiment: How DA Marcus Webb let "
+            "criminals run wild. Since the prosecutor took office, residents "
+            "say downtown Rivertown has become unrecognizable. Shoplifters "
+            "brazenly clear shelves with impunity, and violent offenders walk "
+            "free hours after arrest. 'He cares more about criminals than "
+            "victims,' said retired officer Dan Kowalski, who spent 30 years "
+            "on the force. Kowalski described case after case of suspects "
+            "released without charges. Critics point to a 9% rise in property "
+            "crime. Webb's office did not respond to requests for comment "
+            "by press time."
         ),
         extractions=[
             lx.data.Extraction(
                 extraction_class="loaded_language",
-                extraction_text="San Francisco's failed experiment",
+                extraction_text="Kern Valley County's failed experiment",
                 attributes={
-                    "language_type": "presuppositional_verb",
+                    "language_type": "pejorative_label",
                     "target": "prosecutor_policy",
+                    "valence": "unfavorable",
                     "position": "headline_or_lede",
                 },
             ),
@@ -142,21 +146,13 @@ BIAS_FEW_SHOT_EXAMPLES = [
                 attributes={
                     "language_type": "hyperbole",
                     "target": "prosecutor",
+                    "valence": "unfavorable",
                     "position": "headline_or_lede",
                 },
             ),
             lx.data.Extraction(
-                extraction_class="loaded_language",
-                extraction_text="the radical progressive prosecutor",
-                attributes={
-                    "language_type": "pejorative_label",
-                    "target": "prosecutor",
-                    "position": "body",
-                },
-            ),
-            lx.data.Extraction(
                 extraction_class="ungrounded_negative_claim",
-                extraction_text="shoplifters brazenly clear shelves with impunity, and violent offenders walk free hours after arrest",
+                extraction_text="Shoplifters brazenly clear shelves with impunity, and violent offenders walk free hours after arrest",
                 attributes={
                     "claim_content": "performance",
                     "evidence_quality": "none",
@@ -165,7 +161,7 @@ BIAS_FEW_SHOT_EXAMPLES = [
             ),
             lx.data.Extraction(
                 extraction_class="source_prominence_imbalance",
-                extraction_text="retired officer Jim Walsh, who spent 30 years on the force. Walsh described case after case of suspects released without charges",
+                extraction_text="retired officer Dan Kowalski, who spent 30 years on the force. Kowalski described case after case of suspects released without charges",
                 attributes={
                     "source_stance": "critical",
                     "prominence_mechanism": "extended_quote",
@@ -173,55 +169,38 @@ BIAS_FEW_SHOT_EXAMPLES = [
                 },
             ),
             lx.data.Extraction(
-                extraction_class="ungrounded_negative_claim",
-                extraction_text="A business owner on Market Street, who asked not to be named for fear of retaliation, said Boudin's policies have destroyed the neighborhood",
-                attributes={
-                    "claim_content": "policy",
-                    "evidence_quality": "anonymous_source",
-                    "systemic_blame": "false",
-                },
-            ),
-            lx.data.Extraction(
                 extraction_class="missing_context",
-                extraction_text="Critics point to a 12% rise in property crime",
+                extraction_text="Critics point to a 9% rise in property crime",
                 attributes={
                     "what_is_missing": "comparison_baseline",
-                    "claim_it_supports": "Prosecutor uniquely responsible for crime increase when similar trends exist nationally",
-                },
-            ),
-            lx.data.Extraction(
-                extraction_class="missing_context",
-                extraction_text="Boudin's office did not respond to requests for comment",
-                attributes={
-                    "what_is_missing": "prosecutor_response",
-                    "claim_it_supports": "Prosecutor is hiding or unable to defend record",
+                    "claim_it_supports": "Prosecutor uniquely responsible for crime increase when no regional or historical baseline is given",
                 },
             ),
         ],
     ),
-    # Example 2: Well-constructed critical article about Price (1 extraction)
+    # Example 2: Well-constructed critical article (1 extraction)
     # Teaches that legitimate criticism with evidence is NOT bias
     lx.data.ExampleData(
         text=(
-            "Alameda County DA Pamela Price's first year in office has drawn "
-            "sharp scrutiny. An East Bay Times analysis of court records found "
-            "that Price's office offered plea deals in 73% of violent felony "
-            "cases, compared to 58% under predecessor Nancy O'Malley. The "
-            "analysis examined 412 cases filed between January and September "
-            "2023. Victims' rights advocate Maria Chen said the plea rates "
-            "concern families who expected tougher prosecution. Price defended "
-            "the approach in a press conference, saying her office prioritizes "
-            "cases with the strongest evidence and that conviction rates on "
-            "cases taken to trial have actually increased to 89%. Criminal "
-            "justice professor David Lang at UC Berkeley noted that higher "
-            "plea rates do not necessarily indicate leniency, as they may "
-            "reflect more realistic case assessment. The recall campaign "
-            "against Price has seized on the plea statistics."
+            "Sierra Madre County DA Elena Reyes's first year in office has "
+            "drawn sharp scrutiny. A Sierra Madre Herald analysis of court "
+            "records found that Reyes's office offered plea deals in 71% of "
+            "violent felony cases, compared to 55% under predecessor Frank "
+            "Delgado. The analysis examined 380 cases filed between January "
+            "and September. Victims' rights advocate Karen Liu said the plea "
+            "rates concern families who expected tougher prosecution. Reyes "
+            "defended the approach in a press conference, saying her office "
+            "prioritizes cases with the strongest evidence and that conviction "
+            "rates on cases taken to trial have actually increased to 88%. "
+            "Criminal justice professor Alan Motravec at Ridgefield University "
+            "noted that higher plea rates do not necessarily indicate leniency, "
+            "as they may reflect more realistic case assessment. The recall "
+            "campaign against Reyes has seized on the plea statistics."
         ),
         extractions=[
             lx.data.Extraction(
                 extraction_class="missing_context",
-                extraction_text="The recall campaign against Price has seized on the plea statistics",
+                extraction_text="The recall campaign against Reyes has seized on the plea statistics",
                 attributes={
                     "what_is_missing": "systemic_factors",
                     "claim_it_supports": "Plea rates are uniquely attributable to prosecutor ideology rather than case composition or resource constraints",
@@ -229,28 +208,30 @@ BIAS_FEW_SHOT_EXAMPLES = [
             ),
         ],
     ),
-    # Example 3: Pro-Jenkins puff piece (5 extractions)
-    # Teaches that bias can favor any prosecutor
+    # Example 3: Puff piece FAVORING a prosecutor (5 extractions)
+    # Teaches that bias can favor a prosecutor, with favorable loaded language
     lx.data.ExampleData(
         text=(
-            "New DA Brooke Jenkins is restoring order to San Francisco. In her "
-            "first six months, the tough-on-crime prosecutor has brought a "
-            "sense of accountability that residents desperately needed. Jenkins "
-            "announced felony charges against a prolific shoplifter, drawing "
-            "praise from the business community. 'Finally, someone who takes "
-            "our concerns seriously,' said Union Square Alliance director "
-            "Tom Richards, who described Jenkins as a breath of fresh air "
-            "after the chaos of the Boudin era. Police Chief Bill Scott lauded "
-            "the improved cooperation between his department and the DA's office. "
-            "Crime data for the period is not yet available from official sources."
+            "New DA Susan Hale is restoring order to Port Landry County. In "
+            "her first six months, the tough-on-crime prosecutor has brought "
+            "a sense of accountability that residents desperately needed. "
+            "Hale announced felony charges against a prolific shoplifter, "
+            "drawing praise from the business community. 'Finally, someone "
+            "who takes our concerns seriously,' said Harbor District Alliance "
+            "director Tom Boyd, who described Hale as a breath of fresh air "
+            "after the chaos of her predecessor's tenure. Police Chief Rita "
+            "Alvarez lauded the improved cooperation between her department "
+            "and the DA's office. Crime data for the period is not yet "
+            "available from official sources."
         ),
         extractions=[
             lx.data.Extraction(
                 extraction_class="loaded_language",
-                extraction_text="restoring order to San Francisco",
+                extraction_text="restoring order to Port Landry County",
                 attributes={
                     "language_type": "presuppositional_verb",
                     "target": "prosecutor",
+                    "valence": "favorable",
                     "position": "headline_or_lede",
                 },
             ),
@@ -260,12 +241,13 @@ BIAS_FEW_SHOT_EXAMPLES = [
                 attributes={
                     "language_type": "ideological_framing",
                     "target": "prosecutor",
+                    "valence": "favorable",
                     "position": "body",
                 },
             ),
             lx.data.Extraction(
                 extraction_class="source_prominence_imbalance",
-                extraction_text="Tom Richards, who described Jenkins as a breath of fresh air after the chaos of the Boudin era",
+                extraction_text="Tom Boyd, who described Hale as a breath of fresh air after the chaos of her predecessor's tenure",
                 attributes={
                     "source_stance": "supportive",
                     "prominence_mechanism": "extended_quote",
@@ -274,7 +256,7 @@ BIAS_FEW_SHOT_EXAMPLES = [
             ),
             lx.data.Extraction(
                 extraction_class="source_prominence_imbalance",
-                extraction_text="Police Chief Bill Scott lauded the improved cooperation between his department and the DA's office",
+                extraction_text="Police Chief Rita Alvarez lauded the improved cooperation between her department and the DA's office",
                 attributes={
                     "source_stance": "supportive",
                     "prominence_mechanism": "no_counterbalance",
@@ -300,14 +282,18 @@ CHECKPOINT_INTERVAL = 50  # save after every N articles
 
 
 def load_checkpoint(jsonl_path: Path) -> set[str]:
-    """Return set of article_ids already processed (always as strings)."""
+    """Return set of article_ids already SUCCESSFULLY processed (as strings).
+
+    Records with a non-null error are not counted as done, so errored
+    articles are retried on --resume (same pattern as Step 08).
+    """
     done = set()
     if jsonl_path.exists():
         with open(jsonl_path, "r", encoding="utf-8") as f:
             for line in f:
                 try:
                     obj = json.loads(line)
-                    if "article_id" in obj:
+                    if "article_id" in obj and obj.get("error") is None:
                         done.add(str(obj["article_id"]))
                 except json.JSONDecodeError:
                     continue
@@ -387,7 +373,28 @@ def run_extraction(
                                           total=len(remaining),
                                           desc="Extracting bias indicators")):
             article_id = str(row["article_id"])
-            text = str(row.get("full_text", row.get("body", "")))
+
+            # Resolve article text with explicit NaN handling: a null value in
+            # an existing column must fall through to the next candidate, not
+            # become the literal string "nan".
+            text = ""
+            for col in ("full_text", "body"):
+                candidate = row.get(col)
+                if candidate is not None and pd.notna(candidate) and str(candidate).strip():
+                    text = str(candidate).strip()
+                    break
+
+            if not text:
+                logger.warning(f"Article {article_id}: no usable text in full_text/body; recording error row")
+                result = {
+                    "article_id": article_id,
+                    "n_extractions": 0,
+                    "extractions": [],
+                    "error": "empty_text: no non-null full_text or body available",
+                }
+                results.append(result)
+                jsonl_f.write(json.dumps(result, ensure_ascii=False) + "\n")
+                continue
 
             # Truncate very long articles to ~3000 words
             words = text.split()
@@ -401,6 +408,15 @@ def run_extraction(
                 api_key=api_key,
                 max_workers=1,
             )
+
+            # Stop gracefully on rate-limit errors (don't record failed entry)
+            if result["error"] and "429" in str(result["error"]):
+                logger.warning(
+                    f"Hit rate limit (429) after {i + 1} articles. Stopping gracefully. "
+                    f"Re-run with --resume later."
+                )
+                break
+
             results.append(result)
 
             # Write to JSONL incrementally
@@ -433,6 +449,47 @@ def load_all_extractions(jsonl_path: Path) -> list[dict]:
             except json.JSONDecodeError:
                 continue
     return results
+
+
+def deduplicate_results_by_article(results: list[dict]) -> list[dict]:
+    """Keep one extraction result per article_id.
+
+    Preference order when duplicates exist (e.g., from crash/resume cycles):
+      1) successful record (error is None) over failed record
+      2) latest record when both are successful or both failed
+    """
+    if not results:
+        return results
+
+    chosen: dict[str, dict] = {}
+    had_dupes = 0
+    for res in results:
+        aid = str(res.get("article_id"))
+        if not aid:
+            continue
+
+        prev = chosen.get(aid)
+        if prev is None:
+            chosen[aid] = res
+            continue
+
+        had_dupes += 1
+        prev_ok = prev.get("error") is None
+        curr_ok = res.get("error") is None
+
+        if curr_ok and not prev_ok:
+            chosen[aid] = res
+        elif curr_ok == prev_ok:
+            # Same status (both success or both error): keep latest.
+            chosen[aid] = res
+
+    if had_dupes > 0:
+        logger.warning(
+            f"Detected duplicate extraction records: {had_dupes} extra rows across "
+            f"{len(results)} JSONL entries. Using {len(chosen)} unique article_ids."
+        )
+
+    return list(chosen.values())
 
 
 def flatten_extractions(results: list[dict], df: pd.DataFrame) -> pd.DataFrame:
@@ -470,6 +527,26 @@ def flatten_extractions(results: list[dict], df: pd.DataFrame) -> pd.DataFrame:
 
 # ── Bias scoring ─────────────────────────────────────────────────────────
 
+def normalize_attr(value) -> str:
+    """Normalize an extraction attribute value for string comparison.
+
+    Handles boolean True/False, mixed case ("True", "YES"), and surrounding
+    whitespace. Returns "" for None/NaN so callers can treat it as missing.
+    """
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, float) and pd.isna(value):
+        return ""
+    s = str(value).strip().lower()
+    if s in ("yes", "y"):
+        return "true"
+    if s in ("no", "n"):
+        return "false"
+    return s
+
+
 def compute_article_bias_score(summary: dict) -> float:
     """Compute per-article bias score in [-1, +1]. Negative = anti-prosecutor."""
     anti_signal = (
@@ -477,11 +554,15 @@ def compute_article_bias_score(summary: dict) -> float:
         + 0.15 * min(summary.get("n_systemic_blame", 0) / 2.0, 1.0)
         + 0.20 * min(summary.get("n_source_imbalance_crit", 0) / 2.0, 1.0)
         + 0.15 * min(summary.get("n_loaded_negative", 0) / 3.0, 1.0)
-        + 0.10 * (1.0 if summary.get("n_loaded_headline", 0) > 0 else 0.0)
+        + 0.10 * (1.0 if summary.get("n_loaded_headline_neg", 0) > 0 else 0.0)
         + 0.15 * min(summary.get("n_missing_context", 0) / 3.0, 1.0)
     )
     pro_signal = (
         0.50 * min(summary.get("n_source_imbalance_supp", 0) / 2.0, 1.0)
+        # Mirror the anti-side loaded-language weight and headline bonus so
+        # favorable hyperbole counts toward pro-prosecutor slant.
+        + 0.15 * min(summary.get("n_loaded_favorable", 0) / 3.0, 1.0)
+        + 0.10 * (1.0 if summary.get("n_loaded_headline_fav", 0) > 0 else 0.0)
     )
     if anti_signal > pro_signal:
         return -anti_signal
@@ -490,9 +571,18 @@ def compute_article_bias_score(summary: dict) -> float:
     return 0.0
 
 
-def build_article_summary(results: list[dict], df: pd.DataFrame) -> pd.DataFrame:
-    """Build per-article summary of bias indicator counts and composite score."""
+def build_article_summary(
+    results: list[dict], df: pd.DataFrame
+) -> tuple[pd.DataFrame, dict]:
+    """Build per-article summary of bias indicator counts and composite score.
+
+    Returns (summary_df, quality_counts). quality_counts tracks records with
+    missing/unmapped attribute values, notably `legacy_no_valence`: loaded
+    language extracted before the valence attribute existed (those records
+    are treated as unfavorable and require re-extraction for valid scoring).
+    """
     summaries = []
+    quality = Counter()
     for res in results:
         aid = res["article_id"]
         exts = res.get("extractions", [])
@@ -507,7 +597,10 @@ def build_article_summary(results: list[dict], df: pd.DataFrame) -> pd.DataFrame
             "n_source_imbalance_supp": 0,
             "n_loaded_language": 0,
             "n_loaded_negative": 0,
+            "n_loaded_favorable": 0,
             "n_loaded_headline": 0,
+            "n_loaded_headline_neg": 0,
+            "n_loaded_headline_fav": 0,
             "n_missing_context": 0,
             "error": res.get("error"),
         }
@@ -518,27 +611,44 @@ def build_article_summary(results: list[dict], df: pd.DataFrame) -> pd.DataFrame
 
             if cls == "ungrounded_negative_claim":
                 summary["n_ungrounded_claims"] += 1
-                ev_quality = attrs.get("evidence_quality", "")
+                ev_quality = normalize_attr(attrs.get("evidence_quality"))
                 if ev_quality in ("none", "anonymous_source"):
                     summary["n_ungrounded_severe"] += 1
-                if attrs.get("systemic_blame") == "true":
+                if normalize_attr(attrs.get("systemic_blame")) == "true":
                     summary["n_systemic_blame"] += 1
 
             elif cls == "source_prominence_imbalance":
-                stance = attrs.get("source_stance", "")
+                stance = normalize_attr(attrs.get("source_stance"))
                 if stance == "critical":
                     summary["n_source_imbalance_crit"] += 1
                 elif stance == "supportive":
                     summary["n_source_imbalance_supp"] += 1
+                else:
+                    quality[f"unmapped_source_stance_{stance or 'missing'}"] += 1
 
             elif cls == "loaded_language":
                 summary["n_loaded_language"] += 1
-                target = attrs.get("target", "")
+                target = normalize_attr(attrs.get("target"))
+                valence = normalize_attr(attrs.get("valence"))
+                if not valence:
+                    # Legacy record extracted before valence was required.
+                    quality["legacy_no_valence"] += 1
+                    valence = "unfavorable"
+                elif valence not in ("favorable", "unfavorable"):
+                    quality[f"unmapped_valence_{valence}"] += 1
+                    valence = "unfavorable"
                 if target in ("prosecutor", "prosecutor_policy"):
-                    summary["n_loaded_negative"] += 1
-                position = attrs.get("position", "")
+                    if valence == "unfavorable":
+                        summary["n_loaded_negative"] += 1
+                    else:
+                        summary["n_loaded_favorable"] += 1
+                position = normalize_attr(attrs.get("position"))
                 if position == "headline_or_lede":
                     summary["n_loaded_headline"] += 1
+                    if valence == "unfavorable":
+                        summary["n_loaded_headline_neg"] += 1
+                    else:
+                        summary["n_loaded_headline_fav"] += 1
 
             elif cls == "missing_context":
                 summary["n_missing_context"] += 1
@@ -546,6 +656,16 @@ def build_article_summary(results: list[dict], df: pd.DataFrame) -> pd.DataFrame
         # Compute bias score from the counts
         summary["bias_score"] = compute_article_bias_score(summary)
         summaries.append(summary)
+
+    if quality.get("legacy_no_valence", 0) > 0:
+        logger.warning(
+            f"{quality['legacy_no_valence']} loaded_language extractions lack the "
+            f"valence attribute (legacy records from the old prompt); treated as "
+            f"'unfavorable'. Re-extraction with the updated prompt is required."
+        )
+    for key, n in sorted(quality.items()):
+        if key.startswith("unmapped_"):
+            logger.warning(f"Attribute normalization: {n} records bucketed as {key}")
 
     summary_df = pd.DataFrame(summaries)
 
@@ -566,7 +686,10 @@ def build_article_summary(results: list[dict], df: pd.DataFrame) -> pd.DataFrame
     logger.info(f"Merge: {matched}/{len(result)} articles matched prosecutor metadata")
     if matched < len(result):
         logger.warning(f"{len(result) - matched} articles missing prosecutor_type after merge")
-    return result
+
+    quality_counts = {"legacy_no_valence": 0}
+    quality_counts.update({k: int(v) for k, v in quality.items()})
+    return result, quality_counts
 
 
 # ── Statistical helpers ──────────────────────────────────────────────────
@@ -603,8 +726,25 @@ def bootstrap_diff_ci(
 # ── Main statistical analysis ───────────────────────────────────────────
 
 def run_statistical_analysis(ext_df: pd.DataFrame, summary_df: pd.DataFrame) -> dict:
-    """Compute group-level statistics on bias indicators."""
+    """Compute group-level statistics on bias indicators.
+
+    Articles whose extraction failed (non-null error) are excluded from all
+    statistics; a zero-extraction error row is missing data, not zero bias.
+    """
     stats = {}
+
+    # Exclude failed-API articles from every statistic below
+    if "error" in summary_df.columns:
+        n_excluded = int(summary_df["error"].notna().sum())
+        if n_excluded > 0:
+            logger.warning(
+                f"Excluding {n_excluded} articles with extraction errors from statistics"
+            )
+        summary_df = summary_df[summary_df["error"].isna()].copy()
+    else:
+        n_excluded = 0
+    stats["n_articles_excluded_errors"] = n_excluded
+    stats["n_articles_analyzed"] = int(len(summary_df))
 
     # Split by prosecutor type
     prog = summary_df[summary_df["prosecutor_type"] == "Progressive"]
@@ -710,7 +850,8 @@ def run_statistical_analysis(ext_df: pd.DataFrame, summary_df: pd.DataFrame) -> 
     indicator_cols = [
         "n_ungrounded_claims", "n_ungrounded_severe", "n_systemic_blame",
         "n_source_imbalance_crit", "n_source_imbalance_supp",
-        "n_loaded_language", "n_loaded_negative", "n_loaded_headline",
+        "n_loaded_language", "n_loaded_negative", "n_loaded_favorable",
+        "n_loaded_headline", "n_loaded_headline_neg", "n_loaded_headline_fav",
         "n_missing_context", "n_total",
     ]
     per_indicator = {}
@@ -746,6 +887,13 @@ def run_statistical_analysis(ext_df: pd.DataFrame, summary_df: pd.DataFrame) -> 
              "hyperbole", "ideological_framing", "dehumanizing"]
         )
 
+        # valence by prosecutor_type (missing values from legacy records
+        # land in other_or_missing)
+        categorical["valence"] = _chi_square_on_attribute(
+            ext_df, "loaded_language", "attr_valence",
+            ["favorable", "unfavorable"]
+        )
+
         # what_is_missing by prosecutor_type
         categorical["what_is_missing"] = _chi_square_on_attribute(
             ext_df, "missing_context", "attr_what_is_missing",
@@ -779,6 +927,7 @@ def run_statistical_analysis(ext_df: pd.DataFrame, summary_df: pd.DataFrame) -> 
             "mean_n_source_imbalance_crit": float(p_sub["n_source_imbalance_crit"].mean()),
             "mean_n_source_imbalance_supp": float(p_sub["n_source_imbalance_supp"].mean()),
             "mean_n_loaded_negative": float(p_sub["n_loaded_negative"].mean()),
+            "mean_n_loaded_favorable": float(p_sub["n_loaded_favorable"].mean()),
             "mean_n_loaded_headline": float(p_sub["n_loaded_headline"].mean()),
             "mean_n_missing_context": float(p_sub["n_missing_context"].mean()),
         }
@@ -828,15 +977,29 @@ def _chi_square_on_attribute(
     attr_col: str,
     categories: list[str],
 ) -> dict:
-    """Run chi-square test on an attribute column by prosecutor_type."""
+    """Run chi-square test on an attribute column by prosecutor_type.
+
+    Attribute values are normalized before comparison; values outside the
+    known categories are bucketed as other_or_missing rather than dropped.
+    """
     result = {"Progressive": {}, "Traditional": {}}
     subset = ext_df[ext_df["extraction_class"] == extraction_class]
 
     for ptype in ["Progressive", "Traditional"]:
         ptype_sub = subset[subset["prosecutor_type"] == ptype]
+        values = ptype_sub.get(attr_col, pd.Series(dtype=object)).map(normalize_attr)
+        known_total = 0
         for cat in categories:
-            n = int((ptype_sub.get(attr_col, pd.Series()) == cat).sum())
+            n = int((values == cat).sum())
             result[ptype][cat] = n
+            known_total += n
+        unmapped = max(int(len(ptype_sub)) - known_total, 0)
+        result[ptype]["other_or_missing"] = unmapped
+        if unmapped > 0:
+            logger.info(
+                f"{extraction_class}.{attr_col} ({ptype}): {unmapped} values "
+                f"outside known categories bucketed as other_or_missing"
+            )
 
     # Attempt chi-square
     try:
@@ -860,6 +1023,14 @@ def print_analysis_report(stats: dict):
     logger.info("\n" + "=" * 70)
     logger.info("STEP 09: BIAS INDICATOR EXTRACTION REPORT")
     logger.info("=" * 70)
+
+    n_excluded = stats.get("n_articles_excluded_errors", 0)
+    if n_excluded:
+        logger.info(f"\nExcluded from statistics: {n_excluded} articles with extraction errors")
+    quality = stats.get("data_quality", {})
+    if quality.get("legacy_no_valence", 0) > 0:
+        logger.info(f"WARNING: {quality['legacy_no_valence']} legacy loaded_language "
+                     f"records lack valence — re-extraction needed")
 
     # Primary test
     primary = stats.get("primary_test", {})
@@ -1023,16 +1194,32 @@ def main():
     # Sample if requested
     if args.sample > 0:
         n = min(args.sample, len(df))
-        # Stratified sample: equal Progressive/Traditional
-        prog = df[df["prosecutor_type"] == "Progressive"]
-        trad = df[df["prosecutor_type"] == "Traditional"]
-        n_per = n // 2
-        sample = pd.concat([
-            prog.sample(min(n_per, len(prog)), random_state=RANDOM_SEED),
-            trad.sample(min(n - n_per, len(trad)), random_state=RANDOM_SEED),
-        ])
-        df = sample
-        logger.info(f"Sampled {len(df)} articles (stratified by prosecutor type)")
+        # Stratified sample: equal Progressive/Traditional. Top-up aware:
+        # with --resume, articles already successfully extracted are kept in
+        # the sample and each stratum is filled to target from the remainder,
+        # so an upsized run reuses prior (valid) extractions instead of
+        # discarding them. pandas sampling is not nested across sizes, so a
+        # naive re-draw at a larger n would orphan the earlier extractions.
+        done_ids: set[str] = set()
+        if args.resume and BIAS_EXTRACTIONS_JSONL.exists():
+            done_ids = load_checkpoint(BIAS_EXTRACTIONS_JSONL)
+        aid = df["article_id"].astype(str)
+        done_df = df[aid.isin(done_ids)]
+        pool_df = df[~aid.isin(done_ids)]
+        targets = {"Progressive": n // 2, "Traditional": n - n // 2}
+        parts = [done_df]
+        for ptype, target in targets.items():
+            have = int((done_df["prosecutor_type"] == ptype).sum())
+            need = max(0, target - have)
+            pool = pool_df[pool_df["prosecutor_type"] == ptype]
+            if need > 0:
+                parts.append(pool.sample(min(need, len(pool)), random_state=RANDOM_SEED))
+        df = pd.concat(parts)
+        logger.info(
+            f"Sampled {len(df)} articles (stratified by prosecutor type; "
+            f"{len(done_df)} reused from prior extraction, "
+            f"{len(df) - len(done_df)} newly drawn)"
+        )
 
     # Extraction phase
     if not args.analyze_only:
@@ -1063,19 +1250,25 @@ def main():
         sys.exit(1)
 
     with timer("Analysis"):
-        all_results = load_all_extractions(BIAS_EXTRACTIONS_JSONL)
-        logger.info(f"Loaded {len(all_results)} extraction results from JSONL")
+        raw_results = load_all_extractions(BIAS_EXTRACTIONS_JSONL)
+        logger.info(f"Loaded {len(raw_results)} extraction results from JSONL")
+        all_results = deduplicate_results_by_article(raw_results)
+        logger.info(f"Using {len(all_results)} unique per-article extraction results")
 
         # Flatten to per-extraction DataFrame
         ext_df = flatten_extractions(all_results, df)
         logger.info(f"Flattened to {len(ext_df)} individual bias indicators")
 
         # Build per-article summary with bias scores
-        summary_df = build_article_summary(all_results, df)
+        summary_df, quality_counts = build_article_summary(all_results, df)
         save_parquet(summary_df, BIAS_SUMMARY_PARQUET)
 
         # Run statistical analysis
         stats = run_statistical_analysis(ext_df, summary_df)
+
+        # Data-quality counters (legacy_no_valence > 0 means the JSONL was
+        # produced with the old prompt and needs re-extraction)
+        stats["data_quality"] = quality_counts
 
         # Save stats
         with open(BIAS_STATS_JSON, "w", encoding="utf-8") as f:
