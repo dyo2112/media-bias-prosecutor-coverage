@@ -109,6 +109,80 @@ def bootstrap_diff_ci(
     return float(observed), float(lower), float(upper)
 
 
+def bh_adjust(pvals: list[float]) -> list[float]:
+    """Benjamini-Hochberg adjusted p-values (FDR) for a family of tests."""
+    p = np.asarray(pvals, dtype=float)
+    n = len(p)
+    if n == 0:
+        return []
+    order = np.argsort(p)
+    ranked = p[order] * n / (np.arange(n) + 1)
+    adj = np.minimum.accumulate(ranked[::-1])[::-1]
+    out = np.empty(n)
+    out[order] = np.clip(adj, 0, 1)
+    return out.tolist()
+
+
+def cluster_bootstrap_diff(
+    df: pd.DataFrame,
+    value_col: str,
+    cluster_col: str = "publication",
+    n_boot: int = 2000,
+    seed: int = 42,
+) -> dict:
+    """Cluster bootstrap (resample publications) for the Prog-Trad mean diff.
+
+    The iid article bootstrap understates uncertainty when articles are nested
+    in outlets (syndication, house style). Resampling whole publications with
+    replacement preserves within-outlet dependence.
+    """
+    rng = np.random.default_rng(seed)
+    sub = df.dropna(subset=[value_col, cluster_col]).copy()
+    clusters = sub[cluster_col].unique()
+    grouped = {c: g for c, g in sub.groupby(cluster_col)}
+
+    def mean_diff(frame: pd.DataFrame) -> float:
+        p = frame.loc[frame["prosecutor_type"] == "Progressive", value_col]
+        t = frame.loc[frame["prosecutor_type"] == "Traditional", value_col]
+        if len(p) == 0 or len(t) == 0:
+            return np.nan
+        return float(p.mean() - t.mean())
+
+    observed = mean_diff(sub)
+    diffs = []
+    for _ in range(n_boot):
+        draw = rng.choice(clusters, size=len(clusters), replace=True)
+        boot = pd.concat([grouped[c] for c in draw], ignore_index=True)
+        diffs.append(mean_diff(boot))
+    diffs = np.array([d for d in diffs if not np.isnan(d)])
+    lo, hi = np.percentile(diffs, [2.5, 97.5])
+    # Two-sided bootstrap p for H0: diff = 0
+    p_boot = 2 * min((diffs <= 0).mean(), (diffs >= 0).mean())
+    return {
+        "n_clusters": int(len(clusters)),
+        "n_boot": int(n_boot),
+        "observed_diff": observed,
+        "ci_lower": float(lo),
+        "ci_upper": float(hi),
+        "p_boot_two_sided": float(min(max(p_boot, 1.0 / n_boot), 1.0)),
+    }
+
+
+def weighted_composite_scores(df: pd.DataFrame, weights: dict[str, float]) -> pd.Series:
+    """Per-row weighted composite with renormalization over non-missing methods
+    (same convention as 04_bias_detection.compute_composite)."""
+    num = pd.Series(0.0, index=df.index)
+    den = pd.Series(0.0, index=df.index)
+    for col, w in weights.items():
+        if col not in df.columns:
+            continue
+        v = df[col]
+        mask = v.notna()
+        num[mask] += w * v[mask]
+        den[mask] += w
+    return (num / den).where(den > 0)
+
+
 # ── TOST Equivalence Test ─────────────────────────────────────────────────
 
 def tost_test(
@@ -150,7 +224,9 @@ def tost_test(
         "t2": float(t2),
         "p2": float(p2),
         "p_tost": float(p_tost),
-        "equivalent": p_tost < 0.05,
+        # Plain bool: numpy.bool_ was serialized by json default=str as the
+        # STRING "True"/"False" — both truthy for downstream consumers.
+        "equivalent": bool(p_tost < 0.05),
     }
 
 
@@ -190,7 +266,17 @@ def analysis_1_group_comparison(df: pd.DataFrame) -> dict:
     tost = tost_test(prog, trad, bound=0.2)
     logger.info(f"\nTOST Equivalence Test (bound=0.2d): p={tost['p_tost']:.6f}, equivalent={tost['equivalent']}")
 
+    # Cluster bootstrap: articles are nested in outlets, so also report a
+    # publication-cluster bootstrap CI alongside the iid-article one.
+    cboot = cluster_bootstrap_diff(df, "composite_bias_score")
+    logger.info(
+        f"Cluster bootstrap ({cboot['n_clusters']} publications): diff="
+        f"{cboot['observed_diff']:.4f} [{cboot['ci_lower']:.4f}, {cboot['ci_upper']:.4f}], "
+        f"p~{cboot['p_boot_two_sided']:.4f}"
+    )
+
     return {
+        "cluster_bootstrap": cboot,
         "progressive_n": len(prog),
         "progressive_mean": float(np.mean(prog)),
         "progressive_sd": float(np.std(prog, ddof=1)),
@@ -339,6 +425,281 @@ def analysis_12_sensitivity_no_fallback(df: pd.DataFrame) -> dict:
     }
 
 
+def analysis_13_sensitivity_quote_masked(df: pd.DataFrame) -> dict:
+    """Group comparison on the quote-masked composite.
+
+    composite_bias_score_noquote recomputes the keyword channel (Method C)
+    ignoring matches inside quoted speech, so this contrasts the outlet's own
+    voice across prosecutor types. Methods A/B/D are unchanged in the variant.
+    """
+    logger.info("\n" + "=" * 70)
+    logger.info("ANALYSIS 13: Sensitivity (Quote-Masked Keyword Channel)")
+    logger.info("=" * 70)
+
+    col = "composite_bias_score_noquote"
+    if col not in df.columns:
+        logger.warning(
+            f"{col} not found — rerun 04_bias_detection.py to generate it"
+        )
+        return {"error": f"{col}_not_available"}
+
+    sub = df[df[col].notna() & df["composite_bias_score"].notna()]
+    prog = sub.loc[sub["prosecutor_type"] == "Progressive", col].values
+    trad = sub.loc[sub["prosecutor_type"] == "Traditional", col].values
+    prog_std = sub.loc[sub["prosecutor_type"] == "Progressive", "composite_bias_score"].values
+    trad_std = sub.loc[sub["prosecutor_type"] == "Traditional", "composite_bias_score"].values
+
+    t_stat, p_ttest = ttest_ind(prog, trad, equal_var=False)
+    u_stat, p_mann = mannwhitneyu(prog, trad, alternative="two-sided")
+    d = cohens_d(prog, trad)
+    d_std_same_rows = cohens_d(prog_std, trad_std)
+    diff_est, diff_lo, diff_hi = bootstrap_diff_ci(prog, trad, n_boot=10000)
+    tost = tost_test(prog, trad, bound=0.2)
+
+    logger.info(
+        f"Quote-masked composite: Progressive n={len(prog)}, mean={np.mean(prog):.4f}; "
+        f"Traditional n={len(trad)}, mean={np.mean(trad):.4f}"
+    )
+    logger.info(f"Welch's t-test: t={t_stat:.4f}, p={p_ttest:.6f}")
+    logger.info(
+        f"Cohen's d (quote-masked): {d:.4f} vs standard composite on same rows: "
+        f"{d_std_same_rows:.4f}"
+    )
+
+    return {
+        "progressive_n": int(len(prog)),
+        "progressive_mean": float(np.mean(prog)),
+        "progressive_sd": float(np.std(prog, ddof=1)),
+        "traditional_n": int(len(trad)),
+        "traditional_mean": float(np.mean(trad)),
+        "traditional_sd": float(np.std(trad, ddof=1)),
+        "welch_t": float(t_stat),
+        "welch_p": float(p_ttest),
+        "mannwhitney_u": float(u_stat),
+        "mannwhitney_p": float(p_mann),
+        "cohens_d": float(d),
+        "cohens_d_standard_same_rows": float(d_std_same_rows),
+        "bootstrap_diff": diff_est,
+        "bootstrap_ci_lower": diff_lo,
+        "bootstrap_ci_upper": diff_hi,
+        "tost": tost,
+        "note": (
+            "Keyword channel (Method C) ignores matches inside quoted speech; "
+            "Methods A/B/D unchanged."
+        ),
+    }
+
+
+PRIMARY_WEIGHTS = {
+    "score_aspect_sentiment": 0.35,
+    "score_stance": 0.30,
+    "score_keywords": 0.20,
+    "score_doc_sentiment": 0.15,
+}
+
+
+def analysis_14_weighting_sensitivity(df: pd.DataFrame) -> dict:
+    """Composite effect size under alternative method weightings.
+
+    Backs the manuscript's alternative-weighting claim with an output file:
+    equal, inverse, effect-proportional, leave-one-out (x4), and
+    evaluative-only (stance + keywords) weightings.
+    """
+    logger.info("\n" + "=" * 70)
+    logger.info("ANALYSIS 14: Composite Weighting Sensitivity")
+    logger.info("=" * 70)
+
+    method_cols = list(PRIMARY_WEIGHTS)
+
+    # Effect-proportional weights from per-method |d|
+    abs_d = {}
+    for col in method_cols:
+        prog = df.loc[df["prosecutor_type"] == "Progressive", col].dropna().values
+        trad = df.loc[df["prosecutor_type"] == "Traditional", col].dropna().values
+        abs_d[col] = abs(cohens_d(prog, trad)) if len(prog) > 5 and len(trad) > 5 else 0.0
+    d_total = sum(abs_d.values()) or 1.0
+    effect_prop = {c: v / d_total for c, v in abs_d.items()}
+
+    variants: dict[str, dict[str, float]] = {
+        "primary": PRIMARY_WEIGHTS,
+        "equal": {c: 0.25 for c in method_cols},
+        "inverse": {
+            "score_aspect_sentiment": 0.15,
+            "score_stance": 0.20,
+            "score_keywords": 0.30,
+            "score_doc_sentiment": 0.35,
+        },
+        "effect_proportional": effect_prop,
+        "evaluative_only": {"score_stance": 0.5, "score_keywords": 0.5},
+    }
+    for drop in method_cols:
+        rest = {c: w for c, w in PRIMARY_WEIGHTS.items() if c != drop}
+        total = sum(rest.values())
+        variants[f"drop_{drop.replace('score_', '')}"] = {c: w / total for c, w in rest.items()}
+
+    results = {}
+    for name, weights in variants.items():
+        comp = weighted_composite_scores(df, weights)
+        prog = comp[df["prosecutor_type"] == "Progressive"].dropna().values
+        trad = comp[df["prosecutor_type"] == "Traditional"].dropna().values
+        t_stat, p_val = ttest_ind(prog, trad, equal_var=False)
+        d = cohens_d(prog, trad)
+        logger.info(f"  {name:22s}: d={d:+.3f}  p={p_val:.2e}")
+        results[name] = {
+            "weights": {c: float(w) for c, w in weights.items()},
+            "cohens_d": float(d),
+            "welch_p": float(p_val),
+            "progressive_n": int(len(prog)),
+            "traditional_n": int(len(trad)),
+        }
+
+    ds = [v["cohens_d"] for v in results.values()]
+    results["_summary"] = {"d_min": float(min(ds)), "d_max": float(max(ds))}
+    logger.info(f"  range of d across weightings: [{min(ds):+.3f}, {max(ds):+.3f}]")
+    return results
+
+
+def _prosecutor_focused_mask(df: pd.DataFrame) -> pd.Series:
+    """RA-validated relevance rule: >=2 named mentions of the primary
+    prosecutor OR a headline mention.
+
+    Validated against the RA's 28-article low-relevance benchmark in packet 01
+    (100% recall / 100% precision on that sample; out-of-sample confirmation
+    pending via packets 02/03 and the second coder).
+    """
+    mentions = pd.Series(0.0, index=df.index)
+    headline = pd.Series(0.0, index=df.index)
+    for p in PROSECUTORS:
+        mcol = f"mentions_{p.name}"
+        hcol = f"headline_mention_{p.name}"
+        sel = df["primary_prosecutor"] == p.name
+        if mcol in df.columns:
+            mentions[sel] = df.loc[sel, mcol].fillna(0)
+        if hcol in df.columns:
+            headline[sel] = df.loc[sel, hcol].fillna(0)
+    return (mentions >= 2) | (headline >= 1)
+
+
+def analysis_15_sensitivity_prosecutor_focused(df: pd.DataFrame) -> dict:
+    """Group comparison restricted to prosecutor-focused articles."""
+    logger.info("\n" + "=" * 70)
+    logger.info("ANALYSIS 15: Sensitivity (Prosecutor-Focused Articles Only)")
+    logger.info("=" * 70)
+
+    focused = _prosecutor_focused_mask(df)
+    n_dropped = int((~focused).sum())
+    logger.info(
+        f"Relevance rule (>=2 mentions or headline): kept {int(focused.sum()):,} "
+        f"of {len(df):,} articles (dropped {n_dropped:,})"
+    )
+
+    sub = df[focused]
+    prog = sub.loc[sub["prosecutor_type"] == "Progressive", "composite_bias_score"].dropna().values
+    trad = sub.loc[sub["prosecutor_type"] == "Traditional", "composite_bias_score"].dropna().values
+    t_stat, p_val = ttest_ind(prog, trad, equal_var=False)
+    d = cohens_d(prog, trad)
+    diff_est, diff_lo, diff_hi = bootstrap_diff_ci(prog, trad, n_boot=10000)
+    tost = tost_test(prog, trad, bound=0.2)
+    logger.info(f"  Progressive n={len(prog)}, mean={np.mean(prog):.4f}; "
+                f"Traditional n={len(trad)}, mean={np.mean(trad):.4f}")
+    logger.info(f"  d={d:.4f}, Welch p={p_val:.2e}")
+
+    return {
+        "rule": "mentions_of_primary >= 2 OR headline mention",
+        "validation": (
+            "Separates the RA's 28 low-relevance articles from the other 72 in "
+            "packet 01 with 100% recall/precision; out-of-sample check pending"
+        ),
+        "n_total": int(len(df)),
+        "n_kept": int(focused.sum()),
+        "n_dropped": n_dropped,
+        "progressive_n": int(len(prog)),
+        "progressive_mean": float(np.mean(prog)),
+        "traditional_n": int(len(trad)),
+        "traditional_mean": float(np.mean(trad)),
+        "welch_t": float(t_stat),
+        "welch_p": float(p_val),
+        "cohens_d": float(d),
+        "bootstrap_diff": diff_est,
+        "bootstrap_ci_lower": diff_lo,
+        "bootstrap_ci_upper": diff_hi,
+        "tost": tost,
+    }
+
+
+def analysis_16_sensitivity_tenure_only(df: pd.DataFrame) -> dict:
+    """Group comparison excluding pre-tenure (campaign-period) coverage.
+
+    Articles dated before the primary prosecutor's start date (e.g. Boudin's
+    2019 campaign coverage) are a different genre than incumbent coverage but
+    currently count toward the incumbent contrast.
+    """
+    logger.info("\n" + "=" * 70)
+    logger.info("ANALYSIS 16: Sensitivity (Tenure-Period Coverage Only)")
+    logger.info("=" * 70)
+
+    start_by_name = {p.name: pd.Timestamp(p.start_date) for p in PROSECUTORS}
+    starts = df["primary_prosecutor"].map(start_by_name)
+    pre_tenure = df["date"] < starts
+    per_prosecutor = (
+        df.loc[pre_tenure, "primary_prosecutor"].value_counts().to_dict()
+    )
+    logger.info(f"Pre-tenure articles excluded: {int(pre_tenure.sum()):,} "
+                f"({per_prosecutor})")
+
+    sub = df[~pre_tenure]
+    prog = sub.loc[sub["prosecutor_type"] == "Progressive", "composite_bias_score"].dropna().values
+    trad = sub.loc[sub["prosecutor_type"] == "Traditional", "composite_bias_score"].dropna().values
+    t_stat, p_val = ttest_ind(prog, trad, equal_var=False)
+    d = cohens_d(prog, trad)
+    diff_est, diff_lo, diff_hi = bootstrap_diff_ci(prog, trad, n_boot=10000)
+    logger.info(f"  Progressive n={len(prog)}, mean={np.mean(prog):.4f}; "
+                f"Traditional n={len(trad)}, mean={np.mean(trad):.4f}")
+    logger.info(f"  d={d:.4f}, Welch p={p_val:.2e}")
+
+    return {
+        "n_pre_tenure_excluded": int(pre_tenure.sum()),
+        "pre_tenure_by_prosecutor": {k: int(v) for k, v in per_prosecutor.items()},
+        "progressive_n": int(len(prog)),
+        "progressive_mean": float(np.mean(prog)),
+        "traditional_n": int(len(trad)),
+        "traditional_mean": float(np.mean(trad)),
+        "welch_t": float(t_stat),
+        "welch_p": float(p_val),
+        "cohens_d": float(d),
+        "bootstrap_diff": diff_est,
+        "bootstrap_ci_lower": diff_lo,
+        "bootstrap_ci_upper": diff_hi,
+    }
+
+
+def analysis_17_framing_zeroshot_only(df: pd.DataFrame) -> dict:
+    """Framing analyses restricted to rows classified by the zero-shot model.
+
+    Roughly half of all frame rows come from the keyword fallback
+    (frame_method column), so the headline framing results mix two
+    instruments. This sensitivity reruns the framing analyses on the
+    model-classified subset alone.
+    """
+    logger.info("\n" + "=" * 70)
+    logger.info("ANALYSIS 17: Framing Sensitivity (Zero-Shot-Classified Rows Only)")
+    logger.info("=" * 70)
+
+    if "frame_method" not in df.columns:
+        logger.warning("frame_method column not found — rerun 05_framing_analysis.py")
+        return {"error": "frame_method_not_available"}
+
+    sub = df[df["frame_method"] == "zeroshot"]
+    logger.info(f"Zero-shot-classified rows: {len(sub):,} of {len(df):,}")
+    if len(sub) < 100:
+        return {"error": "insufficient_zeroshot_rows", "n_zeroshot": int(len(sub))}
+
+    results = analysis_4_framing(sub)
+    results["n_zeroshot"] = int(len(sub))
+    results["n_total"] = int(len(df))
+    return results
+
+
 def analysis_2_paired_county(df: pd.DataFrame) -> dict:
     """Same-county paired comparisons — the strongest quasi-experimental design."""
     logger.info("\n" + "=" * 70)
@@ -456,7 +817,14 @@ def analysis_4_framing(df: pd.DataFrame) -> dict:
     logger.info("ANALYSIS 4: Framing Differential Analysis")
     logger.info("=" * 70)
 
-    frame_cols = [c for c in df.columns if c.startswith("frame_") and c != "dominant_frame"]
+    # Numeric filter: frame_method (string indicator of zeroshot vs keyword
+    # fallback) also matches the frame_ prefix and must not enter t-tests.
+    frame_cols = [
+        c for c in df.columns
+        if c.startswith("frame_")
+        and c != "dominant_frame"
+        and pd.api.types.is_numeric_dtype(df[c])
+    ]
 
     if not frame_cols:
         logger.warning("No frame columns found. Run 05_framing_analysis.py first.")
@@ -483,6 +851,23 @@ def analysis_4_framing(df: pd.DataFrame) -> dict:
                 "cramers_v": float(cramers_v),
             }
 
+            # Dominant-frame assignment rates per group (previously quoted in
+            # the manuscript without any output file backing them).
+            rates = {}
+            for frame in ct.columns:
+                p_prog = float(ct_norm.loc["Progressive", frame]) if "Progressive" in ct_norm.index else np.nan
+                p_trad = float(ct_norm.loc["Traditional", frame]) if "Traditional" in ct_norm.index else np.nan
+                # Cohen's h for a difference in proportions
+                h = float(
+                    2 * np.arcsin(np.sqrt(p_prog)) - 2 * np.arcsin(np.sqrt(p_trad))
+                )
+                rates[str(frame)] = {
+                    "progressive_rate": p_prog,
+                    "traditional_rate": p_trad,
+                    "cohens_h": h,
+                }
+            results["dominant_frame_rates"] = rates
+
     # Per-frame comparison (continuous scores)
     for fc in frame_cols:
         prog = df.loc[df["prosecutor_type"] == "Progressive", fc].dropna().values
@@ -504,6 +889,26 @@ def analysis_4_framing(df: pd.DataFrame) -> dict:
             "cohens_d": float(d),
             "p_value": float(p_val),
         }
+
+    # BH adjustment across the per-frame tests (one family)
+    fcols = [k for k in results if k.startswith("frame_")]
+    adj = bh_adjust([results[k]["p_value"] for k in fcols])
+    for k, p_adj in zip(fcols, adj):
+        results[k]["p_value_bh"] = float(p_adj)
+
+    # Stance-frame correlations: the manuscript's discriminant-validity claim
+    # (r = -0.10 to -0.21) previously had no output file behind it.
+    if "score_stance" in df.columns:
+        corrs = {}
+        for fc in frame_cols:
+            sub = df[["score_stance", fc]].dropna()
+            if len(sub) > 10:
+                r, p = stats.pearsonr(sub["score_stance"], sub[fc])
+                corrs[fc] = {"pearson_r": float(r), "p_value": float(p), "n": int(len(sub))}
+        results["stance_frame_correlations"] = corrs
+        logger.info("\nStance-frame correlations (discriminant validity):")
+        for fc, v in corrs.items():
+            logger.info(f"  {fc}: r={v['pearson_r']:+.3f} (n={v['n']})")
 
     return results
 
@@ -630,18 +1035,29 @@ def analysis_6_per_method(df: pd.DataFrame) -> dict:
 
         t_stat, p_val = ttest_ind(prog, trad, equal_var=False)
         d = cohens_d(prog, trad)
+        # Per-method TOST: the manuscript's "tone is equivalent" claim needs an
+        # equivalence test on the tone methods themselves, not just the composite.
+        tost = tost_test(prog, trad, bound=0.2)
 
         logger.info(f"\n{col}:")
         logger.info(f"  Progressive: mean={np.mean(prog):.4f}, n={len(prog)}")
         logger.info(f"  Traditional: mean={np.mean(trad):.4f}, n={len(trad)}")
         logger.info(f"  t={t_stat:.4f}, p={p_val:.6f}, d={d:.4f}")
+        logger.info(f"  TOST (bound=0.2d): p={tost['p_tost']:.6f}, equivalent={tost['equivalent']}")
 
         results[col] = {
             "progressive_mean": float(np.mean(prog)),
             "traditional_mean": float(np.mean(trad)),
             "cohens_d": float(d),
             "p_value": float(p_val),
+            "tost": tost,
         }
+
+    # BH adjustment across the four methods (one test family)
+    cols = list(results)
+    adj = bh_adjust([results[c]["p_value"] for c in cols])
+    for c, p_adj in zip(cols, adj):
+        results[c]["p_value_bh"] = float(p_adj)
 
     return results
 
@@ -1051,6 +1467,21 @@ def main() -> None:
 
     with timer("Analysis 12: Sensitivity (exclude fallback attributions)"):
         all_results["sensitivity_no_fallback"] = analysis_12_sensitivity_no_fallback(analysis_df)
+
+    with timer("Analysis 13: Sensitivity (quote-masked keyword channel)"):
+        all_results["sensitivity_quote_masked"] = analysis_13_sensitivity_quote_masked(analysis_df)
+
+    with timer("Analysis 14: Composite weighting sensitivity"):
+        all_results["weighting_sensitivity"] = analysis_14_weighting_sensitivity(analysis_df)
+
+    with timer("Analysis 15: Sensitivity (prosecutor-focused articles)"):
+        all_results["sensitivity_prosecutor_focused"] = analysis_15_sensitivity_prosecutor_focused(analysis_df)
+
+    with timer("Analysis 16: Sensitivity (tenure-period only)"):
+        all_results["sensitivity_tenure_only"] = analysis_16_sensitivity_tenure_only(analysis_df)
+
+    with timer("Analysis 17: Framing sensitivity (zero-shot rows only)"):
+        all_results["framing_zeroshot_only"] = analysis_17_framing_zeroshot_only(analysis_df)
 
     # ── Save results ───────────────────────────────────────────────────
     with open(STATS_JSON, "w") as f:

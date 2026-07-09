@@ -389,7 +389,12 @@ def fig4_time_series(df: pd.DataFrame):
 
 def fig5_framing_heatmap(df: pd.DataFrame):
     """Heatmap of frame scores by prosecutor."""
-    frame_cols = [c for c in df.columns if c.startswith("frame_") and c != "dominant_frame"]
+    frame_cols = [
+        c for c in df.columns
+        if c.startswith("frame_")
+        and c != "dominant_frame"
+        and pd.api.types.is_numeric_dtype(df[c])
+    ]
     if not frame_cols:
         logger.warning("No frame columns — skipping framing heatmap")
         return
