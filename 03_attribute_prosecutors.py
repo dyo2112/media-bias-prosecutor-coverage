@@ -131,47 +131,52 @@ def assign_by_date_and_county(
     return None
 
 
+# Title immediately adjacent to the surname is a strong disambiguation signal
+# ("District Attorney Jenkins" cannot be a defendant named Jenkins).
+_TITLE_ADJACENT_JENKINS = re.compile(
+    r"\b(?:district\s+attorney|d\.a\.|da|prosecutor)\s+jenkins\b", re.IGNORECASE
+)
+_TITLE_ADJACENT_PRICE = re.compile(
+    r"\b(?:district\s+attorney|d\.a\.|da|prosecutor)\s+price\b", re.IGNORECASE
+)
+
+
 def _is_false_positive_price(article_date, body_text: str) -> bool:
     """Check if a Price attribution is a false positive.
 
     "Price" is a common English word (price gouging, stock price, etc.) and a
-    common surname.  Before Pamela Price took office (2023-01-03), bare "price"
-    matches in a DA/Alameda context often refer to price-gouging enforcement or
-    other people named Price.  We require "pamela" to appear somewhere in the
-    article to confirm it really is about *Pamela* Price.
+    common surname.  The confirmation requirement is TIME-SYMMETRIC: in every
+    period the article must contain "pamela" somewhere, or a title immediately
+    adjacent to the surname ("District Attorney Price").  The earlier version
+    accepted any contextual "price" match after her start date, which injected
+    false positives only in the post period — a time-asymmetric measurement
+    error coinciding exactly with the Alameda ITS breakpoint.
 
-    After her start date all Price-attributed articles are accepted (she is the
-    sitting DA, so "Price" in DA context is almost certainly her).
+    (article_date is retained in the signature for interface stability but no
+    longer changes the rule.)
     """
-    price = next(p for p in PROSECUTORS if p.name == "Pamela Price")
-    if isinstance(article_date, date):
-        art_date = article_date
-    else:
-        art_date = article_date.date() if hasattr(article_date, "date") else article_date
-    if art_date >= price.start_date:
-        return False  # After she took office — always valid
-    # Before she took office — require "pamela" to confirm it's really her
-    return "pamela" not in body_text.lower()
+    if "pamela" in body_text.lower():
+        return False
+    return not _TITLE_ADJACENT_PRICE.search(body_text)
 
 
 def _is_false_positive_jenkins(article_date, body_text: str) -> bool:
     """Check if a Jenkins attribution is a false positive.
 
-    Before Brooke Jenkins took office (2022-07-08), bare "Jenkins" matches
-    often refer to other people (e.g., a victim, a defendant, a politician).
-    We flag these as false positives if "brooke" does NOT appear anywhere in
-    the article body or headline.  After her start date, all Jenkins matches
-    are legitimate.
+    Bare "Jenkins" often refers to other people (a victim, a defendant, a
+    politician).  The confirmation requirement is TIME-SYMMETRIC: in every
+    period the article must contain "brooke" somewhere, or a title immediately
+    adjacent to the surname ("District Attorney Jenkins" / "DA Jenkins").  The
+    earlier version accepted every bare "Jenkins" after her start date, which
+    injected false positives only in the post period — a time-asymmetric
+    measurement error coinciding exactly with the SF ITS breakpoint.
+
+    (article_date is retained in the signature for interface stability but no
+    longer changes the rule.)
     """
-    jenkins = next(p for p in PROSECUTORS if p.name == "Brooke Jenkins")
-    if isinstance(article_date, date):
-        art_date = article_date
-    else:
-        art_date = article_date.date() if hasattr(article_date, "date") else article_date
-    if art_date >= jenkins.start_date:
-        return False  # After she took office — always valid
-    # Before she took office — require "brooke" to confirm it's really her
-    return "brooke" not in body_text.lower()
+    if "brooke" in body_text.lower():
+        return False
+    return not _TITLE_ADJACENT_JENKINS.search(body_text)
 
 
 def determine_primary(

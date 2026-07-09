@@ -391,7 +391,25 @@ def run_extraction(
                                           total=len(remaining),
                                           desc="Extracting")):
             article_id = str(row["article_id"])
-            text = str(row.get("full_text", row.get("body", "")))
+            # row.get(col, default) returns NaN (not the default) when the
+            # column exists but the value is null — resolve explicitly so a
+            # null full_text falls back to body instead of the string "nan".
+            full_text = row.get("full_text")
+            body = row.get("body")
+            if pd.notna(full_text) and str(full_text).strip():
+                text = str(full_text)
+            elif pd.notna(body) and str(body).strip():
+                text = str(body)
+            else:
+                logger.warning(f"Article {article_id}: no usable text; recording error row")
+                result = {
+                    "article_id": article_id,
+                    "extractions": [],
+                    "error": "empty_text",
+                }
+                results.append(result)
+                jsonl_f.write(json.dumps(result, ensure_ascii=False) + "\n")
+                continue
 
             # Truncate very long articles to ~3000 words (Gemini context is large
             # but we want focused extraction near prosecutor mentions)
@@ -604,6 +622,15 @@ def build_article_summary(results: list[dict], df: pd.DataFrame) -> pd.DataFrame
 def run_statistical_analysis(ext_df: pd.DataFrame, summary_df: pd.DataFrame) -> dict:
     """Compute group-level statistics on extraction patterns."""
     stats = {}
+
+    # Failed extractions previously entered statistics as zero-count articles,
+    # attenuating group means non-randomly. Exclude them and report the count.
+    if "error" in summary_df.columns:
+        n_err = int(summary_df["error"].notna().sum())
+        if n_err > 0:
+            logger.warning(f"Excluding {n_err} articles with extraction errors from statistics")
+        summary_df = summary_df[summary_df["error"].isna()].copy()
+        stats["n_error_articles_excluded"] = n_err
 
     prog = summary_df[summary_df["prosecutor_type"] == "Progressive"]
     trad = summary_df[summary_df["prosecutor_type"] == "Traditional"]
