@@ -5,17 +5,27 @@ Purpose:
   Replace simple pre/post mean-difference tests with a stronger ITS design:
     y_t = b0 + b1*time + b2*post + b3*time_after + e_t
 
-  - b2 estimates an immediate level change at the transition.
+  - b2 estimates an immediate level change at the transition (time_after = 0
+    in the first post month; the transition month counts as post).
   - b3 estimates a slope change after the transition.
   - Models are fit on monthly aggregated outcomes, weighted by article counts.
-  - Inference uses HAC (Newey-West) robust standard errors.
+  - Inference uses HAC (Newey-West) robust standard errors, with automatic-lag
+    HAC and AR(1)/GLSAR robustness fits reported alongside.
+
+Controlled ITS:
+  San Mateo county (Steve Wagstaffe; no prosecutor transition) serves as an
+  untreated comparison series. For each transition and outcome, the monthly
+  difference (treated mean - San Mateo mean) is passed through the same
+  segmented design - the simplest comparative ITS - which nets out shocks
+  common to Bay Area crime coverage.
 
 Input:
   output/04_bias_scores.parquet
 
 Outputs:
-  output/12_segmented_its_results.json
+  output/12_segmented_its_results.json  (controlled fits under "controlled_its")
   output/12_segmented_its_table.csv
+  output/12_segmented_its_controlled_table.csv
 """
 
 from __future__ import annotations
@@ -39,6 +49,7 @@ from utils import setup_logging, load_parquet, logger, timer
 
 ITS_JSON = OUTPUT_DIR / "12_segmented_its_results.json"
 ITS_CSV = OUTPUT_DIR / "12_segmented_its_table.csv"
+ITS_CONTROLLED_CSV = OUTPUT_DIR / "12_segmented_its_controlled_table.csv"
 ITS_FIG = OUTPUT_DIR / "figures" / "18_segmented_its.png"
 PAPER_FIG_DIR = Path(__file__).resolve().parent / "paper" / "figures"
 PAPER_ITS_FIG = PAPER_FIG_DIR / "18_segmented_its.png"
@@ -72,6 +83,10 @@ OUTCOMES = {
     "score_doc_sentiment": "D: Document sentiment",
 }
 
+# San Mateo county: same media market, no prosecutor transition in-window.
+CONTROL_PROSECUTORS = ("Steve Wagstaffe",)
+CONTROL_LABEL = "San Mateo (Wagstaffe)"
+
 
 def _build_design(
     monthly: pd.DataFrame,
@@ -103,6 +118,50 @@ def _fit_segmented_its(
         min_post_months=min_post_months,
         horizon_months=12,
     )
+
+
+def _prepare_controlled_monthly(
+    df: pd.DataFrame,
+    treated_prosecutors: tuple[str, str],
+    outcome_col: str,
+) -> tuple[pd.DataFrame, int]:
+    """Build the monthly treated-minus-control difference series.
+
+    Both series are aggregated with the same ``prepare_monthly`` logic over
+    the treated county's window; months where either series is missing are
+    dropped (the caller logs the count). The difference is weighted by the
+    treated county's monthly article count: the treated series carries the
+    transition signal and, with far more articles per month than San Mateo,
+    dominates the sampling variance of the difference; it also keeps the
+    weighting comparable to the primary (uncontrolled) ITS.
+
+    Returns the difference frame (columns month, month_dt, mean_outcome,
+    n_articles - the schema ``fit_segmented_its`` expects) and the number of
+    treated months dropped for lack of a control observation.
+    """
+    treated = _prepare_monthly(df, treated_prosecutors, outcome_col)
+    control = prepare_monthly(df, list(CONTROL_PROSECUTORS), outcome_col)
+    if treated.empty or control.empty:
+        return pd.DataFrame(), 0
+
+    treated_m = treated[["month", "mean_outcome", "n_articles"]].rename(
+        columns={"mean_outcome": "treated_mean", "n_articles": "treated_n"}
+    )
+    control_m = control[["month", "mean_outcome"]].rename(
+        columns={"mean_outcome": "control_mean"}
+    )
+    merged = treated_m.merge(control_m, on="month", how="inner")
+    n_dropped = len(treated_m) - len(merged)
+
+    merged["mean_outcome"] = merged["treated_mean"] - merged["control_mean"]
+    merged["n_articles"] = merged["treated_n"]
+    merged["month_dt"] = merged["month"].dt.to_timestamp()
+    diff = (
+        merged[["month", "month_dt", "mean_outcome", "n_articles"]]
+        .sort_values("month")
+        .reset_index(drop=True)
+    )
+    return diff, n_dropped
 
 
 def _plot_segmented_its(df: pd.DataFrame) -> None:
@@ -301,6 +360,91 @@ def main() -> None:
 
             results[trans.label] = trans_results
 
+    controlled_results: dict[str, dict] = {}
+    controlled_rows: list[dict] = []
+
+    with timer("Fit controlled ITS models (San Mateo comparison)"):
+        for trans in TRANSITIONS:
+            logger.info("")
+            logger.info("=" * 70)
+            logger.info(
+                f"Controlled ITS: {trans.label} vs {CONTROL_LABEL} "
+                f"({trans.transition_date.date()})"
+            )
+            logger.info("=" * 70)
+            trans_controlled: dict[str, dict] = {}
+
+            for outcome_col, outcome_label in OUTCOMES.items():
+                if outcome_col not in df.columns:
+                    trans_controlled[outcome_col] = {
+                        "error": "missing_outcome_column"
+                    }
+                    continue
+
+                diff_monthly, n_dropped = _prepare_controlled_monthly(
+                    df, trans.prosecutors, outcome_col
+                )
+                if n_dropped > 0:
+                    logger.info(
+                        f"{outcome_label}: dropped {n_dropped} treated "
+                        f"month(s) without a {CONTROL_LABEL} observation"
+                    )
+
+                model_result = _fit_segmented_its(
+                    diff_monthly, trans.transition_date
+                )
+                model_result["control_county"] = CONTROL_LABEL
+                model_result["weighting"] = "treated_monthly_article_count"
+                model_result["n_months_dropped_missing_control"] = n_dropped
+                trans_controlled[outcome_col] = model_result
+
+                if "error" in model_result:
+                    logger.warning(
+                        f"{outcome_label}: skipped ({model_result['error']})"
+                    )
+                    continue
+
+                row = _to_row(trans.label, outcome_label, model_result)
+                row["control_county"] = CONTROL_LABEL
+                row["n_months_dropped_missing_control"] = n_dropped
+                controlled_rows.append(row)
+
+                logger.info(
+                    f"{outcome_label}: level={row['level_change_beta']:.4f} "
+                    f"(p={row['level_change_p']:.4g}), slope={row['slope_change_beta']:.4f} "
+                    f"(p={row['slope_change_p']:.4g}), "
+                    f"{row['horizon_months']}m effect={row['effect_at_horizon']:.4f} "
+                    f"(p={row['effect_at_horizon_p']:.4g})"
+                )
+
+            controlled_results[trans.label] = trans_controlled
+
+    results["controlled_its"] = controlled_results
+
+    # Benjamini-Hochberg adjustment across the primary ITS table's test family
+    # (2 transitions x 5 outcomes x {level, slope, horizon} p-values). Added as
+    # extra columns; existing keys/columns untouched.
+    if table_rows:
+        p_cols = ["level_change_p", "slope_change_p", "effect_at_horizon_p"]
+        flat = [
+            (i, col, row[col])
+            for i, row in enumerate(table_rows)
+            for col in p_cols
+            if row.get(col) is not None and not np.isnan(row[col])
+        ]
+        pvals = np.array([p for _, _, p in flat])
+        order = np.argsort(pvals)
+        ranked = pvals[order] * len(pvals) / (np.arange(len(pvals)) + 1)
+        adj = np.minimum.accumulate(ranked[::-1])[::-1]
+        adjusted = np.empty(len(pvals))
+        adjusted[order] = np.clip(adj, 0, 1)
+        for (i, col, _), p_adj in zip(flat, adjusted):
+            table_rows[i][f"{col}_bh"] = float(p_adj)
+        results["multiplicity_note"] = (
+            "level/slope/horizon p-values BH-adjusted as one family of "
+            f"{len(pvals)} tests; adjusted values in *_bh columns of the CSV"
+        )
+
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     with open(ITS_JSON, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)
@@ -312,6 +456,15 @@ def main() -> None:
         logger.info(f"Saved ITS table: {ITS_CSV.name}")
     else:
         logger.warning("No ITS rows produced; CSV not written.")
+
+    if controlled_rows:
+        controlled_df = pd.DataFrame(controlled_rows).sort_values(
+            ["transition", "outcome"]
+        )
+        controlled_df.to_csv(ITS_CONTROLLED_CSV, index=False)
+        logger.info(f"Saved controlled ITS table: {ITS_CONTROLLED_CSV.name}")
+    else:
+        logger.warning("No controlled ITS rows produced; CSV not written.")
 
     with timer("Render segmented ITS figure"):
         _plot_segmented_its(df)
