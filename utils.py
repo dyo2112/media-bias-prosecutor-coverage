@@ -75,23 +75,88 @@ def split_sentences(text: str) -> list[str]:
 
 
 def get_sentence_windows(
-    text: str, target: str, window_size: int = 3
+    text: str, target: str, window_size: int = 3, whole_word: bool = True
 ) -> list[str]:
     """Get sentence windows around occurrences of target in text.
 
     Returns list of text excerpts consisting of `window_size` sentences
     centered on each sentence that contains `target`.
+
+    With whole_word=True (default), the target must not be embedded inside a
+    longer word — prevents e.g. "the da" matching "the day" or "the dark".
     """
     sentences = split_sentences(text)
     target_lower = target.lower()
+    if whole_word:
+        target_re = re.compile(
+            r"(?<!\w)" + re.escape(target_lower) + r"(?!\w)"
+        )
+        def matches(sent: str) -> bool:
+            return bool(target_re.search(sent.lower()))
+    else:
+        def matches(sent: str) -> bool:
+            return target_lower in sent.lower()
+
     windows = []
     for i, sent in enumerate(sentences):
-        if target_lower in sent.lower():
+        if matches(sent):
             start = max(0, i - window_size // 2)
             end = min(len(sentences), i + window_size // 2 + 1)
             window_text = " ".join(sentences[start:end])
             windows.append(window_text)
     return windows
+
+
+def is_negated(
+    text: str,
+    match_start: int,
+    negation_words: set[str],
+    window: int = 4,
+) -> bool:
+    """Check whether a match at match_start is negated by a preceding word.
+
+    Compares whole tokens (not substrings) in the `window` words before the
+    match, so "no" does not fire inside "know" or "not" inside "notably".
+    Multi-word negators (e.g. "no evidence") are matched as phrases against
+    the joined token window.
+    """
+    preceding_tokens = re.findall(r"[\w']+", text[:match_start].lower())
+    token_window = preceding_tokens[-window:]
+    window_str = " ".join(token_window)
+    for neg in negation_words:
+        if " " in neg:
+            if neg in window_str:
+                return True
+        elif neg in token_window:
+            return True
+    return False
+
+
+# Quoted-speech spans: straight or curly double quotes. Span length is capped
+# so a stray unmatched quote cannot swallow the rest of the article.
+_QUOTE_SPAN_RE = re.compile(r'"[^"]{2,600}"|“[^“”]{2,600}”')
+
+
+def find_quote_spans(text: str) -> list[tuple[int, int]]:
+    """Return (start, end) character spans of quoted speech in text."""
+    if not isinstance(text, str) or '"' not in text and "“" not in text:
+        return []
+    return [(m.start(), m.end()) for m in _QUOTE_SPAN_RE.finditer(text)]
+
+
+def pos_in_spans(pos: int, spans: list[tuple[int, int]]) -> bool:
+    """Check whether a character position falls inside any (start, end) span."""
+    return any(start <= pos < end for start, end in spans)
+
+
+def fraction_quoted(text: str, spans: list[tuple[int, int]] | None = None) -> float:
+    """Fraction of characters in text that sit inside quoted speech."""
+    if not isinstance(text, str) or not text:
+        return 0.0
+    if spans is None:
+        spans = find_quote_spans(text)
+    quoted = sum(end - start for start, end in spans)
+    return quoted / len(text)
 
 
 def batched_inference(

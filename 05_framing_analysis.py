@@ -129,6 +129,10 @@ def zeroshot_frame_scores(
     """
     results = {f"frame_{f}": [] for f in FRAME_NAMES}
     results["dominant_frame"] = []
+    # Records which instrument produced each row's scores: "zeroshot",
+    # "keyword_fallback", or None — mixed-instrument rows were previously
+    # indistinguishable downstream.
+    results["frame_method"] = []
 
     for _, row in tqdm(df.iterrows(), total=len(df), desc="Frame classification"):
         primary = row["primary_prosecutor"]
@@ -136,6 +140,7 @@ def zeroshot_frame_scores(
             for f in FRAME_NAMES:
                 results[f"frame_{f}"].append(np.nan)
             results["dominant_frame"].append(None)
+            results["frame_method"].append(None)
             continue
 
         p = next((p for p in PROSECUTORS if p.name == primary), None)
@@ -143,6 +148,7 @@ def zeroshot_frame_scores(
             for f in FRAME_NAMES:
                 results[f"frame_{f}"].append(np.nan)
             results["dominant_frame"].append(None)
+            results["frame_method"].append(None)
             continue
 
         # Get context windows around prosecutor mentions
@@ -150,7 +156,8 @@ def zeroshot_frame_scores(
         for variant in p.name_variants + [p.name]:
             ws = get_sentence_windows(row["body"], variant, window_size=5)
             windows.extend(ws)
-        windows = list(set(windows))
+        # Order-preserving dedup (set() order varies by process hash seed)
+        windows = list(dict.fromkeys(windows))
 
         if not windows:
             # Fallback to keyword-based scoring
@@ -159,6 +166,7 @@ def zeroshot_frame_scores(
                 results[f"frame_{f}"].append(kw_scores.get(f, 0.0))
             dominant = max(kw_scores, key=kw_scores.get) if any(kw_scores.values()) else None
             results["dominant_frame"].append(dominant)
+            results["frame_method"].append("keyword_fallback")
             continue
 
         # Combine windows into one text, truncate
@@ -184,6 +192,7 @@ def zeroshot_frame_scores(
 
             dominant = max(frame_scores, key=frame_scores.get)
             results["dominant_frame"].append(dominant)
+            results["frame_method"].append("zeroshot")
 
         except Exception as e:
             logger.warning(f"Frame error for article {row['article_id']}: {e}")
@@ -193,7 +202,10 @@ def zeroshot_frame_scores(
                 results[f"frame_{f}"].append(kw_scores.get(f, 0.0))
             dominant = max(kw_scores, key=kw_scores.get) if any(kw_scores.values()) else None
             results["dominant_frame"].append(dominant)
+            results["frame_method"].append("keyword_fallback")
 
+    n_fallback = sum(1 for m in results["frame_method"] if m == "keyword_fallback")
+    logger.info(f"Keyword-fallback rows: {n_fallback:,} of {len(df):,}")
     return pd.DataFrame(results, index=df.index)
 
 
@@ -221,6 +233,7 @@ def main() -> None:
         with timer("Keyword-based frame detection"):
             frame_results = {f"frame_{f}": [] for f in FRAME_NAMES}
             frame_results["dominant_frame"] = []
+            frame_results["frame_method"] = []
 
             for _, row in tqdm(df.iterrows(), total=len(df), desc="Keyword frames"):
                 kw_scores = keyword_frame_scores(row["body"])
@@ -228,6 +241,7 @@ def main() -> None:
                     frame_results[f"frame_{f}"].append(kw_scores.get(f, 0.0))
                 dominant = max(kw_scores, key=kw_scores.get) if any(kw_scores.values()) else None
                 frame_results["dominant_frame"].append(dominant)
+                frame_results["frame_method"].append("keyword_only")
 
             frame_df = pd.DataFrame(frame_results, index=df.index)
     else:

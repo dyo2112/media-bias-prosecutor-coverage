@@ -35,15 +35,27 @@ from config import (
     THEME_STATS_JSON,
     OUTPUT_DIR,
 )
-from utils import setup_logging, load_parquet, save_parquet, split_sentences, timer, logger
+from utils import (
+    setup_logging,
+    load_parquet,
+    save_parquet,
+    split_sentences,
+    is_negated,
+    find_quote_spans,
+    pos_in_spans,
+    timer,
+    logger,
+)
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # PATTERN DICTIONARIES
 # ═══════════════════════════════════════════════════════════════════════════
 
-# Placeholder token that gets replaced with per-article prosecutor regex
-_P = r"(?:da|district\s+attorney|prosecutor|d\.a\.)"
+# Placeholder token that gets replaced with per-article prosecutor regex.
+# Word-boundary lookarounds prevent short terms matching inside longer words
+# (bare "da" previously matched "day", "data", "agenda", ...).
+_P = r"(?<!\w)(?:da|district\s+attorney|prosecutor|d\.a\.)(?!\w)"
 
 # ── Method 1: Context-Aware Dictionary Patterns ──────────────────────────
 # Each pattern requires BOTH a prosecutor mention AND a theme keyword
@@ -51,7 +63,7 @@ _P = r"(?:da|district\s+attorney|prosecutor|d\.a\.)"
 
 CONTEXTUAL_THEME_PATTERNS: dict[str, list[str]] = {
     "crime_rising": [
-        rf"(?:crime|violence).{{0,20}}(?:up|rising|increase|spike|surge|soar).{{0,30}}{_P}",
+        rf"(?:crime|violence).{{0,20}}(?:up\b|rising|increase|spike|surge|soar).{{0,30}}{_P}",
         rf"{_P}.{{0,30}}(?:causing|responsible for|fault|blamed for).{{0,20}}(?:crime|violence)",
         rf"soft.{{0,5}}on.{{0,5}}crime.{{0,20}}{_P}",
         rf"{_P}.{{0,20}}soft.{{0,5}}on.{{0,5}}crime",
@@ -201,7 +213,9 @@ def build_prosecutor_alternation(prosecutor_name: str) -> str:
     terms.append(re.escape(p.name))
     # Sort longest first to prevent partial matches
     terms.sort(key=len, reverse=True)
-    return r"(?:" + "|".join(terms) + r")"
+    # Word-boundary lookarounds: without them bare "da" matched inside
+    # "day"/"data"/"agenda" and short name variants inside longer words.
+    return r"(?<!\w)(?:" + "|".join(terms) + r")(?!\w)"
 
 
 # Cache compiled patterns per prosecutor
@@ -238,12 +252,23 @@ def get_compiled_patterns(prosecutor_name: str) -> dict:
     return compiled
 
 
-def is_negated(text: str, match_start: int) -> bool:
-    """Check if a match at match_start is negated by preceding words."""
-    preceding = text[:match_start].lower().split()
-    window = preceding[-4:] if len(preceding) >= 4 else preceding
-    window_str = " ".join(window)
-    return any(neg in window_str for neg in NEGATION_WORDS)
+def pattern_hit(
+    body: str, pat: re.Pattern, quote_spans: list[tuple[int, int]]
+) -> tuple[bool, bool]:
+    """Scan all matches of pat in body, skipping negated ones.
+
+    Returns (found, found_outside_quotes). A match inside quoted speech counts
+    toward `found` but not `found_outside_quotes` — the no-quote variant
+    separates the outlet's own voice from language it merely quotes.
+    """
+    found = False
+    for m in pat.finditer(body):
+        if is_negated(body, m.start(), NEGATION_WORDS):
+            continue
+        found = True
+        if not pos_in_spans(m.start(), quote_spans):
+            return True, True
+    return found, False
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -261,26 +286,34 @@ def method_1_contextual_dictionary(df: pd.DataFrame) -> pd.DataFrame:
     for _, row in tqdm(df.iterrows(), total=len(df), desc="Method 1"):
         prosecutor = row["primary_prosecutor"]
         if pd.isna(prosecutor):
-            results.append({"ta_dict_score": 0, "ta_dict_themes": ""})
+            results.append({
+                "ta_dict_score": 0, "ta_dict_score_noquote": 0, "ta_dict_themes": "",
+            })
             continue
 
         body = row["body"].lower() if isinstance(row["body"], str) else ""
+        quote_spans = find_quote_spans(body)
         compiled = get_compiled_patterns(prosecutor)
         themes_found = []
+        themes_found_noquote = []
 
         for theme_name, patterns in compiled["contextual"].items():
             found = False
+            found_nq = False
             for pat in patterns:
-                m = pat.search(body)
-                if m and not is_negated(body, m.start()):
-                    found = True
+                hit, hit_nq = pattern_hit(body, pat, quote_spans)
+                found = found or hit
+                found_nq = found_nq or hit_nq
+                if found_nq:
                     break
             if found:
                 themes_found.append(theme_name)
+            if found_nq:
+                themes_found_noquote.append(theme_name)
 
-        score = min(len(themes_found) * 5, 25)
         result = {
-            "ta_dict_score": score,
+            "ta_dict_score": min(len(themes_found) * 5, 25),
+            "ta_dict_score_noquote": min(len(themes_found_noquote) * 5, 25),
             "ta_dict_themes": ", ".join(themes_found),
         }
         for t in THEME_NAMES:
@@ -305,24 +338,31 @@ def method_2_relationship_regex(df: pd.DataFrame) -> pd.DataFrame:
     for _, row in tqdm(df.iterrows(), total=len(df), desc="Method 2"):
         prosecutor = row["primary_prosecutor"]
         if pd.isna(prosecutor):
-            results.append({"ta_regex_score": 0, "ta_regex_themes": ""})
+            results.append({
+                "ta_regex_score": 0, "ta_regex_score_noquote": 0, "ta_regex_themes": "",
+            })
             continue
 
         body = row["body"].lower() if isinstance(row["body"], str) else ""
+        quote_spans = find_quote_spans(body)
         compiled = get_compiled_patterns(prosecutor)
         themes_found = set()
         patterns_matched = []
+        patterns_matched_noquote = []
 
         for pat_name, pat in compiled["relationship"].items():
-            if pat.search(body):
+            hit, hit_nq = pattern_hit(body, pat, quote_spans)
+            if hit:
                 patterns_matched.append(pat_name)
                 theme = RELATIONSHIP_TO_THEME.get(pat_name)
                 if theme:
                     themes_found.add(theme)
+            if hit_nq:
+                patterns_matched_noquote.append(pat_name)
 
-        score = min(len(patterns_matched) * 5, 25)
         result = {
-            "ta_regex_score": score,
+            "ta_regex_score": min(len(patterns_matched) * 5, 25),
+            "ta_regex_score_noquote": min(len(patterns_matched_noquote) * 5, 25),
             "ta_regex_themes": ", ".join(sorted(themes_found)),
         }
         for t in THEME_NAMES:
@@ -347,24 +387,31 @@ def method_3_criticism(df: pd.DataFrame) -> pd.DataFrame:
     for _, row in tqdm(df.iterrows(), total=len(df), desc="Method 3"):
         prosecutor = row["primary_prosecutor"]
         if pd.isna(prosecutor):
-            results.append({"ta_crit_score": 0, "ta_crit_themes": ""})
+            results.append({
+                "ta_crit_score": 0, "ta_crit_score_noquote": 0, "ta_crit_themes": "",
+            })
             continue
 
         body = row["body"].lower() if isinstance(row["body"], str) else ""
+        quote_spans = find_quote_spans(body)
         compiled = get_compiled_patterns(prosecutor)
         themes_found = set()
         patterns_matched = []
+        patterns_matched_noquote = []
 
         for pat_name, pat in compiled["criticism"].items():
-            if pat.search(body):
+            hit, hit_nq = pattern_hit(body, pat, quote_spans)
+            if hit:
                 patterns_matched.append(pat_name)
                 theme = CRITICISM_TO_THEME.get(pat_name)
                 if theme:
                     themes_found.add(theme)
+            if hit_nq:
+                patterns_matched_noquote.append(pat_name)
 
-        score = min(len(patterns_matched) * 5, 25)
         result = {
-            "ta_crit_score": score,
+            "ta_crit_score": min(len(patterns_matched) * 5, 25),
+            "ta_crit_score_noquote": min(len(patterns_matched_noquote) * 5, 25),
             "ta_crit_themes": ", ".join(sorted(themes_found)),
         }
         for t in THEME_NAMES:
@@ -391,17 +438,23 @@ def method_4_cooccurrence(df: pd.DataFrame) -> pd.DataFrame:
         body = row["body"] if isinstance(row["body"], str) else ""
 
         if pd.isna(prosecutor) or not body:
-            results.append({"ta_cooc_score": 0, "ta_cooc_themes": "", "ta_cooc_count": 0})
+            results.append({
+                "ta_cooc_score": 0, "ta_cooc_score_noquote": 0,
+                "ta_cooc_themes": "", "ta_cooc_count": 0,
+            })
             continue
 
         # Also match prosecutor's name variants at sentence level
         p = next((p for p in PROSECUTORS if p.name == prosecutor), None)
         extra_terms = []
         if p:
-            extra_terms = [re.escape(v) for v in p.name_variants] + [re.escape(p.name)]
+            extra_terms = [
+                r"(?<!\w)" + re.escape(v) + r"(?!\w)" for v in p.name_variants
+            ] + [r"(?<!\w)" + re.escape(p.name) + r"(?!\w)"]
 
         sentences = split_sentences(body)
         cooc_count = 0
+        cooc_count_noquote = 0
         themes_found = set()
 
         for sent in sentences:
@@ -417,17 +470,22 @@ def method_4_cooccurrence(df: pd.DataFrame) -> pd.DataFrame:
             if not has_prosecutor:
                 continue
 
-            # Check for criticism keywords
+            # Check for criticism keywords. Quote detection is per-sentence
+            # here (offsets into the full body are lost by the splitter), so
+            # multi-sentence quotes are only partially masked — conservative.
+            sent_quote_spans = find_quote_spans(sent_lower)
             for m in COOCCURRENCE_CRITICISM_RE.finditer(sent_lower):
                 keyword = m.group().lower()
                 theme = COOCCURRENCE_TO_THEME.get(keyword)
                 if theme:
                     themes_found.add(theme)
                     cooc_count += 1
+                    if not pos_in_spans(m.start(), sent_quote_spans):
+                        cooc_count_noquote += 1
 
-        score = min((cooc_count / 5) * 25, 25)
         result = {
-            "ta_cooc_score": score,
+            "ta_cooc_score": min((cooc_count / 5) * 25, 25),
+            "ta_cooc_score_noquote": min((cooc_count_noquote / 5) * 25, 25),
             "ta_cooc_themes": ", ".join(sorted(themes_found)),
             "ta_cooc_count": cooc_count,
         }
@@ -450,37 +508,47 @@ def compute_validated_scores(df: pd.DataFrame) -> pd.DataFrame:
     """
     logger.info("Computing validated composite scores")
 
-    # Weighted base score
+    def composite_from(suffix: str) -> tuple[pd.Series, pd.Series]:
+        base = (
+            df[f"ta_dict_score{suffix}"] * WEIGHTS["dictionary"]
+            + df[f"ta_regex_score{suffix}"] * WEIGHTS["regex"]
+            + df[f"ta_crit_score{suffix}"] * WEIGHTS["criticism"]
+            + df[f"ta_cooc_score{suffix}"] * WEIGHTS["cooccurrence"]
+        )
+        n_detected = (
+            (df[f"ta_dict_score{suffix}"] > 0).astype(int)
+            + (df[f"ta_regex_score{suffix}"] > 0).astype(int)
+            + (df[f"ta_crit_score{suffix}"] > 0).astype(int)
+            + (df[f"ta_cooc_score{suffix}"] > 0).astype(int)
+        )
+        conditions = [n_detected < 2, n_detected == 2, n_detected >= 3]
+        choices = [
+            base.clip(upper=15),   # cap single-method
+            base * 1.1,            # medium confidence
+            base * 1.25,           # high confidence
+        ]
+        composite = pd.Series(
+            np.select(conditions, choices, default=0.0), index=df.index
+        ).clip(upper=100).round(2)
+        return composite, n_detected
+
     df["ta_base_score"] = (
         df["ta_dict_score"] * WEIGHTS["dictionary"]
         + df["ta_regex_score"] * WEIGHTS["regex"]
         + df["ta_crit_score"] * WEIGHTS["criticism"]
         + df["ta_cooc_score"] * WEIGHTS["cooccurrence"]
     )
+    df["ta_composite_score"], df["ta_methods_detected"] = composite_from("")
+    # Quote-masked variant: matches inside quoted speech are excluded, so this
+    # score reflects the outlet's own voice rather than quoted sources.
+    df["ta_composite_score_noquote"], _ = composite_from("_noquote")
 
-    # Count methods with any detection
-    df["ta_methods_detected"] = (
-        (df["ta_dict_score"] > 0).astype(int)
-        + (df["ta_regex_score"] > 0).astype(int)
-        + (df["ta_crit_score"] > 0).astype(int)
-        + (df["ta_cooc_score"] > 0).astype(int)
-    )
-
-    # Multi-method validation
+    # Confidence labels
     conditions = [
         df["ta_methods_detected"] < 2,
         df["ta_methods_detected"] == 2,
         df["ta_methods_detected"] >= 3,
     ]
-    choices = [
-        df["ta_base_score"].clip(upper=15),      # cap single-method
-        df["ta_base_score"] * 1.1,                # medium confidence
-        df["ta_base_score"] * 1.25,               # high confidence
-    ]
-    df["ta_composite_score"] = np.select(conditions, choices, default=0.0)
-    df["ta_composite_score"] = df["ta_composite_score"].clip(upper=100).round(2)
-
-    # Confidence labels
     df["ta_confidence"] = np.select(
         conditions,
         ["Low", "Medium", "High"],
@@ -586,6 +654,33 @@ def run_statistics(df: pd.DataFrame) -> dict:
         "bootstrap_ci_upper": hi,
     }
 
+    # ── 1b. Quote-masked sensitivity ──────────────────────────────────
+    if "ta_composite_score_noquote" in adf.columns:
+        logger.info("\n── Quote-Masked Composite (outlet voice only) ──")
+        gq_prog = prog["ta_composite_score_noquote"].values
+        gq_trad = trad["ta_composite_score_noquote"].values
+        tq, pq = ttest_ind(gq_prog, gq_trad, equal_var=False)
+        dq = cohens_d(gq_prog, gq_trad)
+        diff_q, lo_q, hi_q = bootstrap_diff_ci(gq_prog, gq_trad)
+        logger.info(
+            f"  Progressive mean={np.mean(gq_prog):.4f}, "
+            f"Traditional mean={np.mean(gq_trad):.4f}, d={dq:.4f}, p={pq:.4e}"
+        )
+        results["overall_noquote"] = {
+            "progressive_mean": float(np.mean(gq_prog)),
+            "traditional_mean": float(np.mean(gq_trad)),
+            "welch_t": float(tq),
+            "welch_p": float(pq),
+            "cohens_d": dq,
+            "bootstrap_diff": diff_q,
+            "bootstrap_ci_lower": lo_q,
+            "bootstrap_ci_upper": hi_q,
+            "note": (
+                "Theme matches inside quoted speech excluded; compares the "
+                "outlet's own voice across prosecutor types."
+            ),
+        }
+
     # ── 2. Theme presence rate: any theme ─────────────────────────────
     logger.info("\n── Theme Presence ──")
     prog_any = prog["ta_any_theme"].mean()
@@ -641,6 +736,17 @@ def run_statistics(df: pd.DataFrame) -> dict:
             "p_value": float(p_chi),
             "cramers_v": cramers_v,
         }
+
+    # Benjamini-Hochberg adjustment across the 9 per-theme tests (one family)
+    theme_keys = list(per_theme)
+    pvals = np.asarray([per_theme[t]["p_value"] for t in theme_keys], dtype=float)
+    order = np.argsort(pvals)
+    ranked = pvals[order] * len(pvals) / (np.arange(len(pvals)) + 1)
+    adj = np.minimum.accumulate(ranked[::-1])[::-1]
+    adjusted = np.empty(len(pvals))
+    adjusted[order] = np.clip(adj, 0, 1)
+    for t, p_adj in zip(theme_keys, adjusted):
+        per_theme[t]["p_value_bh"] = float(p_adj)
 
     results["per_theme"] = per_theme
 
