@@ -21,9 +21,27 @@ import numpy as np
 from config import (
     BIAS_PARQUET,
     OUTPUT_DIR,
+    STATS_JSON,
     THEME_ATTR_PARQUET,
+    THEME_STATS_JSON,
 )
 from utils import setup_logging, load_parquet, logger
+
+
+def load_effect_size(json_path, keys, default: str = "n/a") -> str:
+    """Read a Cohen's d from a stats JSON, formatted for prose.
+
+    Effect sizes were previously hardcoded here and went stale whenever the
+    pipeline was rerun.
+    """
+    try:
+        with open(json_path, "r", encoding="utf-8") as f:
+            node = json.load(f)
+        for k in keys:
+            node = node[k]
+        return f"{float(node):.2f}"
+    except (OSError, KeyError, TypeError, ValueError):
+        return default
 
 
 def truncate_body(text: str, max_words: int = 200) -> str:
@@ -91,8 +109,9 @@ def main():
     output_lines.append("*Auto-extracted from the corpus to illustrate how each method ")
     output_lines.append("captures different dimensions of coverage bias.*\n\n")
 
-    # ── 1. Theme Attribution (d=0.42, study's largest effect) ──
-    output_lines.append("## 1. Prosecutor-Attributed Theme Detection (d = 0.43)\n")
+    # ── 1. Theme Attribution ──
+    ta_d = load_effect_size(THEME_STATS_JSON, ["overall", "cohens_d"])
+    output_lines.append(f"## 1. Prosecutor-Attributed Theme Detection (d = {ta_d})\n")
     output_lines.append("This method detects anti-prosecutor narrative themes (recall campaigns, ")
     output_lines.append("soft-on-crime framing, etc.) attributed to specific prosecutors.\n\n")
 
@@ -134,7 +153,8 @@ def main():
         output_lines.append(format_example(row, "ta_composite_score", "No anti-prosecutor themes detected"))
 
     # ── 2. Keyword Analysis (Method C) ──
-    output_lines.append("\n## 2. Keyword Bias Score (Method C, d = -0.22)\n")
+    kw_d = load_effect_size(STATS_JSON, ["per_method", "score_keywords", "cohens_d"])
+    output_lines.append(f"\n## 2. Keyword Bias Score (Method C, d = {kw_d})\n")
     output_lines.append("Weighted keyword scoring based on crime-related terminology, ")
     output_lines.append("negativity markers, and prosecutor-specific framing.\n\n")
 

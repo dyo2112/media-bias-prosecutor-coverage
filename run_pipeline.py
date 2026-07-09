@@ -25,6 +25,12 @@ import os
 import subprocess
 import sys
 
+# Child steps emit UTF-8 (box-drawing chars in summaries); a cp1252 console
+# crashed the whole pipeline mid-run when echoing them. Never let logging
+# encoding kill an analysis run.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(SCRIPT_DIR, "pipeline_log.txt")
 PYTHON_EXE = sys.executable or "python"
@@ -54,6 +60,15 @@ def log(msg: str, f) -> None:
     print(msg)
     f.write(msg + "\n")
     f.flush()
+
+
+def pause_if_interactive() -> None:
+    """Wait for Enter only when attached to a terminal (unattended runs must not block)."""
+    try:
+        if sys.stdin is not None and sys.stdin.isatty():
+            input("\nPress Enter to close...")
+    except (EOFError, OSError):
+        pass
 
 
 def run_step(label: str, desc: str, cmd: list[str], log_f) -> bool:
@@ -124,7 +139,7 @@ def main() -> None:
             if not ok:
                 log(f"\nPipeline STOPPED due to error in step [{label}].", log_f)
                 log("Check the output above and pipeline_log.txt for details.", log_f)
-                input("\nPress Enter to close...")
+                pause_if_interactive()
                 sys.exit(1)
 
         log("\n" + "=" * 50, log_f)
@@ -146,7 +161,7 @@ def main() -> None:
             log("  - paper/generated_stats.tex", log_f)
         log("=" * 50, log_f)
 
-    input("\nPress Enter to close...")
+    pause_if_interactive()
 
 
 if __name__ == "__main__":
