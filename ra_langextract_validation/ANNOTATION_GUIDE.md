@@ -1,29 +1,37 @@
 # Annotation Guide
 
-This guide covers only the Step 08 structural extraction workflow.
+This guide covers the Step 08 structural extraction validation workflow.
+
+You will receive up to four CSV files, each with your coder id in the folder or
+file name (e.g. `generated/ra1/01_article_validation_sample.csv`). Every file
+contains article content columns plus empty `ra_*` columns. Fill only the
+`ra_*` columns. Do not add, remove, rename, or reorder columns.
+
+Important: code each row on the text alone. You are the benchmark; there are
+no "expected" answers, and your labels are compared against other information
+only after you finish. Do not try to guess what the study is looking for.
 
 ## Scope
 
 Include:
 
-- Section 4.8 structural results
-- Appendix A structural extraction
+- the four generated CSV files listed below
 
 Exclude:
 
-- Appendix B pilot bias-indicator extraction
 - anything produced by `09_bias_extraction.py`
+- any other pipeline output files
 
 ## File 1: Article Validation
 
 File:
 
-- `generated/01_article_validation_sample.csv`
+- `generated/<your coder id>/01_article_validation_sample.csv`
 
 Focus:
 
-- human validation of overall article stance
-- human validation of dominant frame
+- the article's overall stance toward the named prosecutor
+- the article's dominant frame
 - flags for difficult discourse conditions
 
 ### `ra_article_stance`
@@ -54,7 +62,7 @@ Use one of:
 - `mixed`
 - `other`
 
-Use the manuscript's frame logic:
+Definitions:
 
 - `accountability`
   - the prosecutor is blamed or held responsible
@@ -67,12 +75,36 @@ Use the manuscript's frame logic:
 - `reform`
   - the article is about reform politics, ideology, or tough/soft-on-crime
 
+### `ra_dominant_frame_forced`
+
+Always fill this one too, even when you used `mixed` or `other` above.
+
+Pick the single closest of the five substantive frames only:
+
+- `accountability`
+- `conflict`
+- `consequences`
+- `human_interest`
+- `reform`
+
+If `ra_dominant_frame` is already one of the five, repeat it here. If you used
+`mixed` or `other`, choose the one frame that comes closest anyway. This
+forced choice is required for every row.
+
 ### `ra_primary_issue`
 
 Short free text:
 
 - e.g. `retail theft`, `recall politics`, `homicide plea deal`,
   `office staffing`, `drug diversion`
+
+### `ra_prosecutor_is_subject`
+
+Use:
+
+- `yes` - the named prosecutor is a main subject of the article
+- `no` - the prosecutor is only mentioned in passing
+- `unclear`
 
 ### Discourse-condition flags
 
@@ -97,14 +129,11 @@ Fields:
 
 File:
 
-- `generated/02_extraction_review_sample.csv`
+- `generated/<your coder id>/02_extraction_review_sample.csv`
 
-Focus:
-
-- source attribution quality
-- causal claim quality
-- off-schema values
-- ambiguous cases
+Each row shows one machine-extracted span (`extraction_text`), its predicted
+class and attributes, and a context excerpt from the article. Judge the
+extraction on its own merits.
 
 ### `ra_present_in_text`
 
@@ -184,14 +213,14 @@ Flag these even if you are not fully sure:
 - a lawsuit/report/court filing being coded as a person-like source
 - vague or non-comparative statements being coded as `comparison`
 - causal claims where causality is only implied
-- source roles that fall outside the prompt schema
+- source roles that fall outside the class list above
 - blended multi-role outputs like comma-separated source types
 
 ## File 3: Case-Type Coding
 
 File:
 
-- `generated/03_case_type_coding_sample.csv`
+- `generated/<your coder id>/03_case_type_coding_sample.csv`
 
 Focus:
 
@@ -250,20 +279,64 @@ Use:
 `yes` means the article is substantially about a specific incident, case, or
 defendant rather than general prosecutor politics or policy.
 
+## File 4: Extraction Recall (Missed Content)
+
+File:
+
+- `generated/<your coder id>/04_extraction_recall_sample.csv`
+
+Each row shows a longer article excerpt (`article_excerpt`) and the complete
+list of machine extractions for that article (`model_extractions`, one per
+line, with the class in brackets). Here you look for content the machine
+MISSED, judging only against the excerpt shown.
+
+### `ra_n_missed_sources`
+
+Whole number (0, 1, 2, ...).
+
+Count quoted or clearly attributed voices in the excerpt (a person, office,
+organization, report, or filing that is quoted or paraphrased about the
+prosecutor or the case) that do NOT appear anywhere in the
+`model_extractions` list as a `source_attribution`.
+
+- count distinct sources, not distinct quotes from the same source
+- if the machine captured the source under a different class, still count it
+  as missed for this column
+- enter `0` when nothing was missed
+
+### `ra_n_missed_causal_claims`
+
+Whole number (0, 1, 2, ...).
+
+Count statements in the excerpt that assert or imply the prosecutor's actions
+caused some outcome (crime up or down, cases dismissed, community impact) that
+do NOT appear in the `model_extractions` list as a `causal_claim`.
+
+- include implied causation ("since she took office, thefts have soared")
+- enter `0` when nothing was missed
+
+### `ra_missed_notes`
+
+Short free text quoting or paraphrasing the missed items, so they can be
+checked later. Separate multiple items with `;`.
+
 ## General Coding Rules
 
 - Read enough context to understand who is speaking and what is being claimed.
 - Do not assume the article voice matches a quoted speaker's stance.
-- When uncertain, keep the main label conservative and explain the uncertainty in
-  `ra_notes`.
+- When uncertain, keep the main label conservative and explain the uncertainty
+  in `ra_notes` (`ra_missed_notes` in File 4). Exception:
+  `ra_dominant_frame_forced` must always get one of the five frames.
 - Fill only `ra_*` columns.
-- Do not overwrite model outputs or metadata columns.
+- Do not modify the pre-filled content columns.
+- Code independently: do not discuss rows with anyone else who is coding the
+  same files until both of you have finished.
 
 ## Quality Control
 
 When in doubt:
 
-1. prefer `unclear` over a forced label
+1. prefer `unclear` over a forced label (except in the forced-choice column)
 2. leave a short note
 3. flag repeated failure modes consistently across files
 
@@ -275,3 +348,10 @@ Useful recurring note tags:
 - `implicit causality`
 - `comparison not explicit`
 - `policy vs claim`
+
+## Returning Files
+
+Save each finished file as `<original name with _sample replaced by
+_completed>` and return it through the channel the PI gave you, e.g.
+`01_article_validation_completed.csv`. Keep your coder id in the folder or
+file name.

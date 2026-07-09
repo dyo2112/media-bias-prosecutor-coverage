@@ -1,6 +1,8 @@
 generated/*
 completed/*
 summary/*
+adjudication/*
 !generated/.gitkeep
 !completed/.gitkeep
 !summary/.gitkeep
+!adjudication/.gitkeep
