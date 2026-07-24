@@ -19,6 +19,7 @@ Prints all results to console and saves structured output.
 """
 
 import json
+import re
 import warnings
 from itertools import combinations
 
@@ -624,6 +625,111 @@ def analysis_15_sensitivity_prosecutor_focused(df: pd.DataFrame) -> dict:
         "bootstrap_ci_lower": diff_lo,
         "bootstrap_ci_upper": diff_hi,
         "tost": tost,
+    }
+
+
+# Prominent prosecutors outside the study's five, whose coverage leaks into the
+# corpus when an article names a tracked prosecutor in passing. Counted only to
+# test whether the article's primary prosecutor actually dominates it.
+UNTRACKED_PROSECUTOR_PATTERNS = [
+    r"gasc[oó]n", r"kamala\s+harris", r"jeff\s+rosen", r"todd\s+spitzer",
+    r"chisholm", r"krasner", r"mosby", r"kim\s+foxx",
+]
+
+
+def _mention_dominance_mask(df: pd.DataFrame) -> pd.Series:
+    """RA-derived relevance rule with a mention-dominance requirement.
+
+    Keeps articles where the primary prosecutor is named at least twice or in
+    the headline AND is named more often than all other prosecutors combined
+    (the study's other four plus prominent non-study prosecutors).
+
+    Motivation: the RA repeatedly flagged articles that name the attributed
+    prosecutor several times while actually being about someone else — most
+    often another reform prosecutor (Gascon, Harris, Rosen). The simpler
+    mentions-or-headline rule cannot detect these.
+    """
+    untracked_re = re.compile(
+        r"(?<!\w)(?:" + "|".join(UNTRACKED_PROSECUTOR_PATTERNS) + r")(?!\w)",
+        re.IGNORECASE,
+    )
+
+    primary = pd.Series(0.0, index=df.index)
+    headline = pd.Series(0.0, index=df.index)
+    others = pd.Series(0.0, index=df.index)
+    for p in PROSECUTORS:
+        sel = df["primary_prosecutor"] == p.name
+        mcol, hcol = f"mentions_{p.name}", f"headline_mention_{p.name}"
+        if mcol in df.columns:
+            primary[sel] = df.loc[sel, mcol].fillna(0)
+        if hcol in df.columns:
+            headline[sel] = df.loc[sel, hcol].fillna(0)
+        # every OTHER tracked prosecutor's mentions count against dominance
+        for q in PROSECUTORS:
+            if q.name == p.name:
+                continue
+            qcol = f"mentions_{q.name}"
+            if qcol in df.columns:
+                others[sel] += df.loc[sel, qcol].fillna(0)
+
+    text_col = "full_text" if "full_text" in df.columns else "body"
+    untracked = df[text_col].fillna("").astype(str).apply(
+        lambda t: len(untracked_re.findall(t))
+    )
+
+    return ((primary >= 2) | (headline >= 1)) & (primary > (others + untracked))
+
+
+def analysis_18_sensitivity_mention_dominance(df: pd.DataFrame) -> dict:
+    """Group comparison under the stricter mention-dominance relevance rule."""
+    logger.info("\n" + "=" * 70)
+    logger.info("ANALYSIS 18: Sensitivity (Mention-Dominance Relevance Rule)")
+    logger.info("=" * 70)
+
+    keep = _mention_dominance_mask(df)
+    logger.info(
+        f"Kept {int(keep.sum()):,} of {len(df):,} articles "
+        f"(dropped {int((~keep).sum()):,})"
+    )
+
+    sub = df[keep]
+    prog = sub.loc[sub["prosecutor_type"] == "Progressive", "composite_bias_score"].dropna().values
+    trad = sub.loc[sub["prosecutor_type"] == "Traditional", "composite_bias_score"].dropna().values
+    if len(prog) < 5 or len(trad) < 5:
+        return {"error": "insufficient_data"}
+
+    t_stat, p_val = ttest_ind(prog, trad, equal_var=False)
+    d = cohens_d(prog, trad)
+    diff_est, diff_lo, diff_hi = bootstrap_diff_ci(prog, trad, n_boot=10000)
+    logger.info(f"  Progressive n={len(prog)}, mean={np.mean(prog):.4f}; "
+                f"Traditional n={len(trad)}, mean={np.mean(trad):.4f}")
+    logger.info(f"  d={d:.4f}, Welch p={p_val:.2e}")
+
+    return {
+        "rule": (
+            "primary named >=2 times or in headline AND named more often than "
+            "all other prosecutors combined (study + prominent non-study)"
+        ),
+        "validation": (
+            "Against 57 RA-flagged low-relevance/wrong-target articles across "
+            "three validation packets: drops 84% of flagged articles (vs 72% "
+            "for the mentions-only rule) at 94% precision. Rule was developed "
+            "using these flags, so it is in-sample; out-of-sample confirmation "
+            "pending."
+        ),
+        "n_total": int(len(df)),
+        "n_kept": int(keep.sum()),
+        "n_dropped": int((~keep).sum()),
+        "progressive_n": int(len(prog)),
+        "progressive_mean": float(np.mean(prog)),
+        "traditional_n": int(len(trad)),
+        "traditional_mean": float(np.mean(trad)),
+        "welch_t": float(t_stat),
+        "welch_p": float(p_val),
+        "cohens_d": float(d),
+        "bootstrap_diff": diff_est,
+        "bootstrap_ci_lower": diff_lo,
+        "bootstrap_ci_upper": diff_hi,
     }
 
 
@@ -1482,6 +1588,9 @@ def main() -> None:
 
     with timer("Analysis 17: Framing sensitivity (zero-shot rows only)"):
         all_results["framing_zeroshot_only"] = analysis_17_framing_zeroshot_only(analysis_df)
+
+    with timer("Analysis 18: Sensitivity (mention-dominance relevance rule)"):
+        all_results["sensitivity_mention_dominance"] = analysis_18_sensitivity_mention_dominance(analysis_df)
 
     # ── Save results ───────────────────────────────────────────────────
     with open(STATS_JSON, "w") as f:

@@ -3080,5 +3080,22 @@
     },
     "n_zeroshot": 6175,
     "n_total": 12827
+  },
+  "sensitivity_mention_dominance": {
+    "rule": "primary named >=2 times or in headline AND named more often than all other prosecutors combined (study + prominent non-study)",
+    "validation": "Against 57 RA-flagged low-relevance/wrong-target articles across three validation packets: drops 84% of flagged articles (vs 72% for the mentions-only rule) at 94% precision. Rule was developed using these flags, so it is in-sample; out-of-sample confirmation pending.",
+    "n_total": 12827,
+    "n_kept": 3781,
+    "n_dropped": 9046,
+    "progressive_n": 2043,
+    "progressive_mean": -0.0429184674617803,
+    "traditional_n": 1738,
+    "traditional_mean": 0.006828683955791756,
+    "welch_t": -8.309679183406697,
+    "welch_p": 1.322864172408667e-16,
+    "cohens_d": -0.2669345884228009,
+    "bootstrap_diff": -0.04974715141757206,
+    "bootstrap_ci_lower": -0.06148633652443177,
+    "bootstrap_ci_upper": -0.03763246871639337
   }
 }

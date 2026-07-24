@@ -113,6 +113,17 @@ def main() -> None:
     m = df.merge(cen[["article_id", "prosecutor_centrality", "n_mentions"]],
                  on="article_id", how="left")
 
+    # Coverage guard: prototype_prosecutor_centrality.py defaults to scoring
+    # only the CURRENT blinded packet, which covers about 60% of the RA's
+    # (older) packet-01 articles. Silently analyzing that subset biases the
+    # AUC upward. Require full coverage and say so loudly if it is missing.
+    n_missing = int(m["prosecutor_centrality"].isna().sum())
+    if n_missing:
+        print(f"!! {n_missing} of {len(m)} coded articles have no centrality "
+              f"score ({CENTRALITY.name} holds {len(cen):,} rows).")
+        print("!! Rerun: py -3 scripts/prototype_prosecutor_centrality.py --full")
+        print("!! Numbers below are computed on a biased subset — do not quote.\n")
+
     print("=" * 68)
     print("1. CENTRALITY-GATE VALIDATION vs RA's not-prosecutor-focused flag")
     print("=" * 68)
