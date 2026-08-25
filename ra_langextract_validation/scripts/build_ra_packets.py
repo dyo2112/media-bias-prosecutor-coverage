@@ -933,23 +933,39 @@ def build_recall_packet(
             excerpt = truncate(" || ".join(paragraphs[:8]), 6000)
             excerpt_lower = excerpt.lower()
 
+            # Step 08 ran the model on the first ~3,000 words, but the excerpt
+            # above is only the first 8 paragraphs. Listing extractions the
+            # coder cannot see makes the recall task incoherent (they cannot
+            # verify them) and inflates the true-positive denominator. So show
+            # ONLY extractions grounded in the visible excerpt, and disclose
+            # how many were drawn from later in the article.
             extractions = flat_by_article.get(article_id)
             lines = []
             n_sources_in_excerpt = 0
             n_causal_in_excerpt = 0
+            n_outside_excerpt = 0
             if extractions is not None:
                 extractions = extractions.sort_values("extraction_index")
                 for _, ex in extractions.iterrows():
+                    in_excerpt = normalize_text(str(ex["extraction_text"])).lower() in excerpt_lower
+                    if not in_excerpt:
+                        n_outside_excerpt += 1
+                        continue
                     lines.append(
-                        f"{int(ex['extraction_index'])}. [{ex['extraction_class']}] "
+                        f"{len(lines) + 1}. [{ex['extraction_class']}] "
                         f"{truncate(str(ex['extraction_text']), 300)}"
                     )
-                    in_excerpt = normalize_text(str(ex["extraction_text"])).lower() in excerpt_lower
-                    if in_excerpt and ex["extraction_class"] == "source_attribution":
+                    if ex["extraction_class"] == "source_attribution":
                         n_sources_in_excerpt += 1
-                    if in_excerpt and ex["extraction_class"] == "causal_claim":
+                    if ex["extraction_class"] == "causal_claim":
                         n_causal_in_excerpt += 1
-            model_extractions = "\n".join(lines) if lines else "(no extractions for this article)"
+            model_extractions = "\n".join(lines) if lines else "(no extractions within this excerpt)"
+            if n_outside_excerpt:
+                model_extractions += (
+                    f"\n\n[{n_outside_excerpt} further extraction(s) came from later "
+                    f"in the article, beyond the excerpt shown. Ignore them: judge "
+                    f"only against the excerpt above.]"
+                )
 
             packet_id = f"R-{article_id}"
             ra_rows.append(
