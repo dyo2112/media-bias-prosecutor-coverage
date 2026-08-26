@@ -711,11 +711,13 @@ def analysis_18_sensitivity_mention_dominance(df: pd.DataFrame) -> dict:
             "all other prosecutors combined (study + prominent non-study)"
         ),
         "validation": (
-            "Against 57 RA-flagged low-relevance/wrong-target articles across "
-            "three validation packets: drops 84% of flagged articles (vs 72% "
-            "for the mentions-only rule) at 94% precision. Rule was developed "
-            "using these flags, so it is in-sample; out-of-sample confirmation "
-            "pending."
+            "Against the pooled benchmark of 55 RA-flagged low-relevance/"
+            "wrong-target articles among 333 coded across validation packets "
+            "01-03: drops 83.6% of flagged articles at 94.5% precision, versus "
+            "70.9%/91.4% for the mentions-only rule. Reproduce with "
+            "ra_langextract_validation/scripts/build_relevance_benchmark.py. "
+            "Both rules were developed using these flags, so the figures are "
+            "in-sample upper bounds; out-of-sample confirmation pending."
         ),
         "n_total": int(len(df)),
         "n_kept": int(keep.sum()),

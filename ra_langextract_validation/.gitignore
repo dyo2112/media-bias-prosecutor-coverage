@@ -6,3 +6,9 @@ adjudication/*
 !completed/.gitkeep
 !summary/.gitkeep
 !adjudication/.gitkeep
+
+# Synthetic fixtures for the multi-coder code paths. Their ra_* labels are
+# fabricated, but the content columns carry real (licensed) article excerpts,
+# so they stay local. See tests/synthetic_fixtures/README.md.
+tests/synthetic_fixtures/*
+!tests/synthetic_fixtures/README.md
