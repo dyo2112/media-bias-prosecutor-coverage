@@ -358,5 +358,139 @@
       "detected": 3960,
       "pct": 0.30872378576440324
     }
+  },
+  "event_decomposition": {
+    "full_sample": {
+      "n_prog": 6585,
+      "n_trad": 6242,
+      "mean_prog": 1.6891647684130602,
+      "mean_trad": 0.6709708426786286,
+      "cohens_d": 0.4181313326713896,
+      "welch_p": 5.145500946678921e-124
+    },
+    "excluding_each_theme": {
+      "crime_rising": {
+        "n_prog": 5221,
+        "n_trad": 5525,
+        "mean_prog": 0.9295537253399732,
+        "mean_trad": 0.41009049773755657,
+        "cohens_d": 0.29972164258160106,
+        "welch_p": 3.5895554472380585e-52,
+        "share_dropped": 0.1622359086302331,
+        "d_change_from_full": -0.11840969008978852
+      },
+      "releasing_criminals": {
+        "n_prog": 6151,
+        "n_trad": 5793,
+        "mean_prog": 1.5936937083401075,
+        "mean_trad": 0.5499378560331435,
+        "cohens_d": 0.4357489597853543,
+        "welch_p": 1.1734471984049965e-125,
+        "share_dropped": 0.06883916738130506,
+        "d_change_from_full": 0.017617627113964696
+      },
+      "victim_neglect": {
+        "n_prog": 6247,
+        "n_trad": 5813,
+        "mean_prog": 1.5737361933728191,
+        "mean_trad": 0.556838121451918,
+        "cohens_d": 0.42892331614250406,
+        "welch_p": 8.036359660609563e-124,
+        "share_dropped": 0.059795743353862944,
+        "d_change_from_full": 0.010791983471114486
+      },
+      "police_conflict": {
+        "n_prog": 6567,
+        "n_trad": 6239,
+        "mean_prog": 1.6780889294959647,
+        "mean_trad": 0.6667046000961692,
+        "cohens_d": 0.4173657413886443,
+        "welch_p": 2.951037667690972e-123,
+        "share_dropped": 0.0016371715911748656,
+        "d_change_from_full": -0.0007655912827452815
+      },
+      "office_dysfunction": {
+        "n_prog": 6583,
+        "n_trad": 6241,
+        "mean_prog": 1.6860230897766977,
+        "mean_trad": 0.6693254286172088,
+        "cohens_d": 0.418396219769139,
+        "welch_p": 3.9374329926707914e-124,
+        "share_dropped": 0.00023388165588212364,
+        "d_change_from_full": 0.0002648870977494111
+      },
+      "soft_on_crime": {
+        "n_prog": 6435,
+        "n_trad": 6205,
+        "mean_prog": 1.551090909090909,
+        "mean_trad": 0.6367945205479453,
+        "cohens_d": 0.3988561069111977,
+        "welch_p": 1.0718625600265294e-110,
+        "share_dropped": 0.014578623216652374,
+        "d_change_from_full": -0.01927522576019186
+      },
+      "case_dismissal": {
+        "n_prog": 6290,
+        "n_trad": 5910,
+        "mean_prog": 1.547537360890302,
+        "mean_trad": 0.5158206429780033,
+        "cohens_d": 0.45642677788142655,
+        "welch_p": 1.231940732160987e-140,
+        "share_dropped": 0.04888126607936384,
+        "d_change_from_full": 0.03829544521003697
+      },
+      "recall": {
+        "n_prog": 5379,
+        "n_trad": 5986,
+        "mean_prog": 0.5233184606804239,
+        "mean_trad": 0.4217741396592048,
+        "cohens_d": 0.09550248782537192,
+        "welch_p": 5.23655496573091e-07,
+        "share_dropped": 0.11397832696655492,
+        "d_change_from_full": -0.32262884484601767
+      },
+      "public_safety_failure": {
+        "n_prog": 6429,
+        "n_trad": 6188,
+        "mean_prog": 1.5493607092860475,
+        "mean_trad": 0.6418018745959922,
+        "cohens_d": 0.39565039428930127,
+        "welch_p": 7.355479180246496e-109,
+        "share_dropped": 0.016371715911748654,
+        "d_change_from_full": -0.02248093838208831
+      }
+    },
+    "excluding_recall_and_crime_rising": {
+      "n_prog": 4519,
+      "n_trad": 5374,
+      "mean_prog": 0.20480858597034743,
+      "mean_trad": 0.2678749534797171,
+      "cohens_d": -0.08833933006325313,
+      "welch_p": 9.236084745331315e-06,
+      "share_dropped": 0.22873625945271692,
+      "d_change_from_full": -0.5064706627346427
+    },
+    "excluding_recall_windows": {
+      "n_prog": 3311,
+      "n_trad": 4503,
+      "mean_prog": 1.121054062216853,
+      "mean_trad": 0.7263402176326893,
+      "cohens_d": 0.1965213935869675,
+      "welch_p": 1.9760841273707948e-16,
+      "share_dropped": 0.3908162469790286,
+      "d_change_from_full": -0.2216099390844221,
+      "windows": [
+        {
+          "start": "2021-06-01",
+          "end": "2022-06-30",
+          "label": "SF/Boudin recall campaign"
+        },
+        {
+          "start": "2023-08-01",
+          "end": "2024-12-31",
+          "label": "Alameda/Price recall campaign"
+        }
+      ]
+    }
   }
 }

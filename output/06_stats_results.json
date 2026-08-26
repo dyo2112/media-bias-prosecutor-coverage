@@ -3097,5 +3097,227 @@
     "bootstrap_diff": -0.04974715141757206,
     "bootstrap_ci_lower": -0.06148633652443177,
     "bootstrap_ci_upper": -0.03763246871639337
+  },
+  "leave_one_prosecutor_out": {
+    "full_sample": {
+      "composite_bias_score": {
+        "n_prog": 6585,
+        "n_trad": 6242,
+        "cohens_d": -0.15108184137015895,
+        "welch_p": 1.0658965391968158e-17
+      },
+      "score_aspect_sentiment": {
+        "n_prog": 5222,
+        "n_trad": 4736,
+        "cohens_d": 0.04740936781337149,
+        "welch_p": 0.017703697739810103
+      },
+      "score_stance": {
+        "n_prog": 5186,
+        "n_trad": 4719,
+        "cohens_d": -0.33742892552225345,
+        "welch_p": 4.896966529338808e-63
+      },
+      "score_keywords": {
+        "n_prog": 6585,
+        "n_trad": 6242,
+        "cohens_d": -0.2027707036016081,
+        "welch_p": 7.921063734882932e-31
+      },
+      "score_doc_sentiment": {
+        "n_prog": 6585,
+        "n_trad": 6242,
+        "cohens_d": 0.049324342876806315,
+        "welch_p": 0.005238185942028309
+      }
+    },
+    "dropping_each_prosecutor": {
+      "Chesa Boudin": {
+        "composite_bias_score": {
+          "n_prog": 802,
+          "n_trad": 6242,
+          "cohens_d": -0.1499676006138918,
+          "welch_p": 0.0009357870601279969,
+          "d_change_from_full": 0.0011142407562671486,
+          "pct_of_full_d": 0.9926249194068452
+        },
+        "score_aspect_sentiment": {
+          "n_prog": 668,
+          "n_trad": 4736,
+          "cohens_d": 0.11671933984185309,
+          "welch_p": 0.014945323370928493
+        },
+        "score_stance": {
+          "n_prog": 666,
+          "n_trad": 4719,
+          "cohens_d": -0.4365333703730221,
+          "welch_p": 1.2374833346708968e-17
+        },
+        "score_keywords": {
+          "n_prog": 802,
+          "n_trad": 6242,
+          "cohens_d": -0.20992138017534662,
+          "welch_p": 2.651333000986551e-06
+        },
+        "score_doc_sentiment": {
+          "n_prog": 802,
+          "n_trad": 6242,
+          "cohens_d": 0.10595551056727787,
+          "welch_p": 0.0062130403869368475
+        },
+        "ideology_dropped": "Progressive",
+        "county_dropped": "San Francisco"
+      },
+      "Brooke Jenkins": {
+        "composite_bias_score": {
+          "n_prog": 6585,
+          "n_trad": 3145,
+          "cohens_d": -0.23256402413982033,
+          "welch_p": 2.9360302188502642e-30,
+          "d_change_from_full": -0.08148218276966138,
+          "pct_of_full_d": 1.5393247926468243
+        },
+        "score_aspect_sentiment": {
+          "n_prog": 5222,
+          "n_trad": 2315,
+          "cohens_d": 0.025351478921300498,
+          "welch_p": 0.2881924145532254
+        },
+        "score_stance": {
+          "n_prog": 5186,
+          "n_trad": 2311,
+          "cohens_d": -0.4670880805271522,
+          "welch_p": 4.419940621619611e-90
+        },
+        "score_keywords": {
+          "n_prog": 6585,
+          "n_trad": 3145,
+          "cohens_d": -0.3055978019023846,
+          "welch_p": 2.282837745467372e-67
+        },
+        "score_doc_sentiment": {
+          "n_prog": 6585,
+          "n_trad": 3145,
+          "cohens_d": 0.021782279057629365,
+          "welch_p": 0.3091008780710498
+        },
+        "ideology_dropped": "Traditional",
+        "county_dropped": "San Francisco"
+      },
+      "Nancy O'Malley": {
+        "composite_bias_score": {
+          "n_prog": 6585,
+          "n_trad": 4745,
+          "cohens_d": -0.17335099865134362,
+          "welch_p": 1.7857014607634734e-20,
+          "d_change_from_full": -0.02226915728118467,
+          "pct_of_full_d": 1.1473979737023723
+        },
+        "score_aspect_sentiment": {
+          "n_prog": 5222,
+          "n_trad": 3746,
+          "cohens_d": 0.06498205964129342,
+          "welch_p": 0.0020664627669545414
+        },
+        "score_stance": {
+          "n_prog": 5186,
+          "n_trad": 3732,
+          "cohens_d": -0.37132518317010427,
+          "welch_p": 2.3546060218635894e-69
+        },
+        "score_keywords": {
+          "n_prog": 6585,
+          "n_trad": 4745,
+          "cohens_d": -0.160336508194854,
+          "welch_p": 1.9990958113534275e-18
+        },
+        "score_doc_sentiment": {
+          "n_prog": 6585,
+          "n_trad": 4745,
+          "cohens_d": 0.04904257035751979,
+          "welch_p": 0.009927423267783904
+        },
+        "ideology_dropped": "Traditional",
+        "county_dropped": "Alameda"
+      },
+      "Pamela Price": {
+        "composite_bias_score": {
+          "n_prog": 5783,
+          "n_trad": 6242,
+          "cohens_d": -0.15405389684352203,
+          "welch_p": 4.5955265665539766e-17,
+          "d_change_from_full": -0.002972055473363072,
+          "pct_of_full_d": 1.019671824531721
+        },
+        "score_aspect_sentiment": {
+          "n_prog": 4554,
+          "n_trad": 4736,
+          "cohens_d": 0.03800500497375572,
+          "welch_p": 0.06744066510118521
+        },
+        "score_stance": {
+          "n_prog": 4520,
+          "n_trad": 4719,
+          "cohens_d": -0.33021518172561365,
+          "welch_p": 1.1295071983030572e-55
+        },
+        "score_keywords": {
+          "n_prog": 5783,
+          "n_trad": 6242,
+          "cohens_d": -0.20655371401025951,
+          "welch_p": 7.86775740804044e-29
+        },
+        "score_doc_sentiment": {
+          "n_prog": 5783,
+          "n_trad": 6242,
+          "cohens_d": 0.04154560655436717,
+          "welch_p": 0.02284581350326008
+        },
+        "ideology_dropped": "Progressive",
+        "county_dropped": "Alameda"
+      },
+      "Steve Wagstaffe": {
+        "composite_bias_score": {
+          "n_prog": 6585,
+          "n_trad": 4594,
+          "cohens_d": -0.06986531269700642,
+          "welch_p": 0.00023679021442728237,
+          "d_change_from_full": 0.08121652867315253,
+          "pct_of_full_d": 0.4624335529895516
+        },
+        "score_aspect_sentiment": {
+          "n_prog": 5222,
+          "n_trad": 3411,
+          "cohens_d": 0.04216124440168901,
+          "welch_p": 0.053033332016404505
+        },
+        "score_stance": {
+          "n_prog": 5186,
+          "n_trad": 3395,
+          "cohens_d": -0.2062768905490747,
+          "welch_p": 4.1197890034247994e-21
+        },
+        "score_keywords": {
+          "n_prog": 6585,
+          "n_trad": 4594,
+          "cohens_d": -0.16245725766651062,
+          "welch_p": 1.2876550444365863e-18
+        },
+        "score_doc_sentiment": {
+          "n_prog": 6585,
+          "n_trad": 4594,
+          "cohens_d": 0.06799560622173183,
+          "welch_p": 0.00042405377220308904
+        },
+        "ideology_dropped": "Traditional",
+        "county_dropped": "San Mateo"
+      }
+    },
+    "_summary": {
+      "full_composite_d": -0.15108184137015895,
+      "d_min": -0.23256402413982033,
+      "d_max": -0.06986531269700642,
+      "robust_all_preserve_or_increase": false
+    }
   }
 }

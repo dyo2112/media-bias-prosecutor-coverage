@@ -733,6 +733,79 @@ def analysis_18_sensitivity_mention_dominance(df: pd.DataFrame) -> dict:
     }
 
 
+def analysis_19_leave_one_prosecutor_out(df: pd.DataFrame) -> dict:
+    """Recompute the composite and per-method contrasts dropping each prosecutor.
+
+    The manuscript previously reported only the leave-Jenkins-out variant, which
+    strengthens the effect. Reporting the full set is required: dropping
+    Wagstaffe (the only San Mateo prosecutor, and a traditional one) roughly
+    halves the composite differential, so the pooled estimate is not uniformly
+    robust to the composition of the traditional baseline.
+    """
+    logger.info("\n" + "=" * 70)
+    logger.info("ANALYSIS 19: Leave-One-Prosecutor-Out Sensitivity")
+    logger.info("=" * 70)
+
+    outcomes = ["composite_bias_score"] + [
+        c for c in (
+            "score_aspect_sentiment", "score_stance",
+            "score_keywords", "score_doc_sentiment",
+        ) if c in df.columns
+    ]
+
+    def contrast(sub: pd.DataFrame, col: str) -> dict | None:
+        prog = sub.loc[sub["prosecutor_type"] == "Progressive", col].dropna().values
+        trad = sub.loc[sub["prosecutor_type"] == "Traditional", col].dropna().values
+        if len(prog) < 20 or len(trad) < 20:
+            return None
+        t_stat, p_val = ttest_ind(prog, trad, equal_var=False)
+        return {
+            "n_prog": int(len(prog)),
+            "n_trad": int(len(trad)),
+            "cohens_d": float(cohens_d(prog, trad)),
+            "welch_p": float(p_val),
+        }
+
+    results: dict = {"full_sample": {c: contrast(df, c) for c in outcomes}}
+    base = results["full_sample"]["composite_bias_score"]
+    base_d = base["cohens_d"] if base else float("nan")
+
+    dropped: dict = {}
+    for p in PROSECUTORS:
+        sub = df[df["primary_prosecutor"] != p.name]
+        cell = {c: contrast(sub, c) for c in outcomes}
+        comp = cell.get("composite_bias_score")
+        if comp:
+            comp["d_change_from_full"] = comp["cohens_d"] - base_d
+            comp["pct_of_full_d"] = (
+                abs(comp["cohens_d"]) / abs(base_d) if base_d else float("nan")
+            )
+        cell["ideology_dropped"] = p.ideology
+        cell["county_dropped"] = p.county
+        dropped[p.name] = cell
+        if comp:
+            logger.info(
+                f"  drop {p.name:18s} ({p.ideology[:4]}) composite d={comp['cohens_d']:+.3f} "
+                f"p={comp['welch_p']:.2e}  ({comp['pct_of_full_d']:.0%} of full)"
+            )
+    results["dropping_each_prosecutor"] = dropped
+
+    ds = [v["composite_bias_score"]["cohens_d"] for v in dropped.values()
+          if v.get("composite_bias_score")]
+    if ds:
+        results["_summary"] = {
+            "full_composite_d": base_d,
+            "d_min": float(min(ds)),
+            "d_max": float(max(ds)),
+            "robust_all_preserve_or_increase": bool(all(abs(x) >= abs(base_d) for x in ds)),
+        }
+        logger.info(
+            f"  composite d across leave-one-out: [{min(ds):+.3f}, {max(ds):+.3f}] "
+            f"(full {base_d:+.3f})"
+        )
+    return results
+
+
 def analysis_16_sensitivity_tenure_only(df: pd.DataFrame) -> dict:
     """Group comparison excluding pre-tenure (campaign-period) coverage.
 
@@ -1591,6 +1664,9 @@ def main() -> None:
 
     with timer("Analysis 18: Sensitivity (mention-dominance relevance rule)"):
         all_results["sensitivity_mention_dominance"] = analysis_18_sensitivity_mention_dominance(analysis_df)
+
+    with timer("Analysis 19: Leave-one-prosecutor-out sensitivity"):
+        all_results["leave_one_prosecutor_out"] = analysis_19_leave_one_prosecutor_out(analysis_df)
 
     # ── Save results ───────────────────────────────────────────────────
     with open(STATS_JSON, "w") as f:

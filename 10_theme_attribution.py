@@ -864,7 +864,111 @@ def run_statistics(df: pd.DataFrame) -> dict:
 
     results["per_method"] = per_method
 
+    # ── 8. Event decomposition ────────────────────────────────────────
+    results["event_decomposition"] = run_event_decomposition(adf)
+
     return results
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# EVENT DECOMPOSITION
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Approximate recall-campaign windows. Boudin: the qualifying signature drive
+# ran through late 2021 with the election on 2022-06-07. Price: the effort
+# began in mid-2023 with the election on 2024-11-05. These are deliberately
+# generous; the point is to test whether the theme differential survives when
+# the periods dominated by actual recall politics are removed.
+RECALL_WINDOWS = [
+    ("2021-06-01", "2022-06-30", "SF/Boudin recall campaign"),
+    ("2023-08-01", "2024-12-31", "Alameda/Price recall campaign"),
+]
+
+
+def run_event_decomposition(adf: pd.DataFrame) -> dict:
+    """Test how much of the theme differential is carried by event-driven themes.
+
+    The two largest per-theme differentials (recall, crime_rising) correspond to
+    real events that happened only to the progressive prosecutors: both faced
+    actual recall campaigns. A differential driven by those themes reflects
+    responsiveness to events rather than differential treatment of comparable
+    officials, so it must be reported separately.
+
+    Two complementary tests:
+      1. Article exclusion - drop articles in which a theme is flagged and
+         recompute the composite differential on the remainder.
+      2. Period exclusion - drop the recall-campaign windows entirely.
+    """
+    logger.info("\n── Event Decomposition (theme differential) ──")
+
+    def contrast(sub: pd.DataFrame) -> dict | None:
+        prog = sub.loc[sub["prosecutor_type"] == "Progressive", "ta_composite_score"].dropna().values
+        trad = sub.loc[sub["prosecutor_type"] == "Traditional", "ta_composite_score"].dropna().values
+        if len(prog) < 20 or len(trad) < 20:
+            return None
+        t_stat, p_val = ttest_ind(prog, trad, equal_var=False)
+        return {
+            "n_prog": int(len(prog)),
+            "n_trad": int(len(trad)),
+            "mean_prog": float(np.mean(prog)),
+            "mean_trad": float(np.mean(trad)),
+            "cohens_d": cohens_d(prog, trad),
+            "welch_p": float(p_val),
+        }
+
+    out: dict = {"full_sample": contrast(adf)}
+    base_d = out["full_sample"]["cohens_d"] if out["full_sample"] else float("nan")
+
+    # 1. Leave-one-theme-out by article exclusion
+    per_theme = {}
+    for theme in THEME_NAMES:
+        col = f"ta_theme_{theme}"
+        if col not in adf.columns:
+            continue
+        res = contrast(adf[~adf[col].astype(bool)])
+        if res:
+            res["share_dropped"] = float(adf[col].astype(bool).mean())
+            res["d_change_from_full"] = res["cohens_d"] - base_d
+            per_theme[theme] = res
+    out["excluding_each_theme"] = per_theme
+
+    # 2. Joint exclusion of the two event-driven themes
+    ev = [c for c in ("ta_theme_recall", "ta_theme_crime_rising") if c in adf.columns]
+    if len(ev) == 2:
+        mask = adf[ev[0]].astype(bool) | adf[ev[1]].astype(bool)
+        res = contrast(adf[~mask])
+        if res:
+            res["share_dropped"] = float(mask.mean())
+            res["d_change_from_full"] = res["cohens_d"] - base_d
+            out["excluding_recall_and_crime_rising"] = res
+
+    # 3. Recall-campaign period exclusion
+    dates = pd.to_datetime(adf["date"], errors="coerce")
+    win = pd.Series(False, index=adf.index)
+    for lo, hi, _ in RECALL_WINDOWS:
+        win |= (dates >= lo) & (dates <= hi)
+    res = contrast(adf[~win])
+    if res:
+        res["share_dropped"] = float(win.mean())
+        res["d_change_from_full"] = res["cohens_d"] - base_d
+        res["windows"] = [{"start": lo, "end": hi, "label": lb} for lo, hi, lb in RECALL_WINDOWS]
+        out["excluding_recall_windows"] = res
+
+    for label, key in [
+        ("full sample", "full_sample"),
+        ("excl recall+crime_rising", "excluding_recall_and_crime_rising"),
+        ("excl recall windows", "excluding_recall_windows"),
+    ]:
+        r = out.get(key)
+        if r:
+            logger.info(f"  {label:28s} d={r['cohens_d']:+.3f} p={r['welch_p']:.2e} "
+                        f"n={r['n_prog']}/{r['n_trad']}")
+    if per_theme:
+        worst = sorted(per_theme.items(), key=lambda kv: kv[1]["cohens_d"])[:3]
+        logger.info("  themes whose removal reduces d the most: "
+                    + ", ".join(f"{k} (d={v['cohens_d']:+.3f})" for k, v in worst))
+
+    return out
 
 
 # ═══════════════════════════════════════════════════════════════════════════
