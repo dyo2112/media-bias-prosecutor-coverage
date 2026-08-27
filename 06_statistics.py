@@ -1077,6 +1077,50 @@ def analysis_4_framing(df: pd.DataFrame) -> dict:
     for k, p_adj in zip(fcols, adj):
         results[k]["p_value_bh"] = float(p_adj)
 
+    # Instrument-mixing diagnostic. frame_* scores come from two instruments on
+    # incommensurable scales: the zero-shot classifier returns multi-label
+    # probabilities (means near 0.8-0.9) while the keyword fallback returns the
+    # fraction of patterns matched (means near 0.03). Group membership
+    # correlates with which instrument scored an article, so a POOLED
+    # probability-score contrast partly reflects instrument mix rather than
+    # content, and can even reverse sign relative to both subgroups. Only
+    # within-instrument contrasts are interpretable.
+    if "frame_method" in df.columns:
+        diag = {}
+        for fc in frame_cols:
+            cell = {}
+            for inst in ("zeroshot", "keyword_fallback"):
+                sub = df[df["frame_method"] == inst]
+                if len(sub) < 50:
+                    continue
+                p = sub.loc[sub["prosecutor_type"] == "Progressive", fc].dropna()
+                t = sub.loc[sub["prosecutor_type"] == "Traditional", fc].dropna()
+                if len(p) > 20 and len(t) > 20:
+                    cell[inst] = {
+                        "progressive_mean": float(p.mean()),
+                        "traditional_mean": float(t.mean()),
+                        "cohens_d": float(cohens_d(p.values, t.values)),
+                    }
+            if cell:
+                cell["pooled_cohens_d"] = results.get(fc, {}).get("cohens_d")
+                diag[fc] = cell
+        mix = (
+            df.assign(_zs=(df["frame_method"] == "zeroshot"))
+            .groupby("prosecutor_type")["_zs"].mean()
+        )
+        results["instrument_mixing_diagnostic"] = {
+            "note": (
+                "frame_* scores mix two instruments on different scales; pooled "
+                "probability-score contrasts are not interpretable. Use the "
+                "zeroshot-only contrasts (framing_zeroshot_only)."
+            ),
+            "share_scored_by_zeroshot": {k: float(v) for k, v in mix.items()},
+            "per_frame_by_instrument": diag,
+        }
+        logger.info("\nInstrument-mixing diagnostic (share scored by zero-shot):")
+        for k, v in mix.items():
+            logger.info(f"  {k}: {v:.3f}")
+
     # Stance-frame correlations: the manuscript's discriminant-validity claim
     # (r = -0.10 to -0.21) previously had no output file behind it.
     if "score_stance" in df.columns:

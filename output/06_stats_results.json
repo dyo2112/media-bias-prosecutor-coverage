@@ -143,6 +143,80 @@
       "p_value": 3.220657299718616e-52,
       "p_value_bh": 1.610328649859308e-51
     },
+    "instrument_mixing_diagnostic": {
+      "note": "frame_* scores mix two instruments on different scales; pooled probability-score contrasts are not interpretable. Use the zeroshot-only contrasts (framing_zeroshot_only).",
+      "share_scored_by_zeroshot": {
+        "Progressive": 0.5023538344722855,
+        "Traditional": 0.45930791413008654
+      },
+      "per_frame_by_instrument": {
+        "frame_accountability": {
+          "zeroshot": {
+            "progressive_mean": 0.897953749421484,
+            "traditional_mean": 0.8573893090943281,
+            "cohens_d": 0.2492012471471003
+          },
+          "keyword_fallback": {
+            "progressive_mean": 0.03300056672043245,
+            "traditional_mean": 0.027936507936507933,
+            "cohens_d": 0.07373296869461583
+          },
+          "pooled_cohens_d": 0.13291667251025074
+        },
+        "frame_conflict": {
+          "zeroshot": {
+            "progressive_mean": 0.9266451808934786,
+            "traditional_mean": 0.9384774459798161,
+            "cohens_d": -0.11899544101560755
+          },
+          "keyword_fallback": {
+            "progressive_mean": 0.0095514189807751,
+            "traditional_mean": 0.008444444444444444,
+            "cohens_d": 0.03466742871846053
+          },
+          "pooled_cohens_d": 0.07422794382165816
+        },
+        "frame_consequences": {
+          "zeroshot": {
+            "progressive_mean": 0.30340660278503234,
+            "traditional_mean": 0.25044333928932205,
+            "cohens_d": 0.21649252692163168
+          },
+          "keyword_fallback": {
+            "progressive_mean": 0.013252539343476174,
+            "traditional_mean": 0.011259259259259259,
+            "cohens_d": 0.04596272992771498
+          },
+          "pooled_cohens_d": 0.17386312688992658
+        },
+        "frame_human_interest": {
+          "zeroshot": {
+            "progressive_mean": 0.8295772547308274,
+            "traditional_mean": 0.9037073505530329,
+            "cohens_d": -0.4128949189718154
+          },
+          "keyword_fallback": {
+            "progressive_mean": 0.025582341572576543,
+            "traditional_mean": 0.026123456790123453,
+            "cohens_d": -0.007681855780570855
+          },
+          "pooled_cohens_d": 0.0006072858652269406
+        },
+        "frame_reform": {
+          "zeroshot": {
+            "progressive_mean": 0.6997929956651932,
+            "traditional_mean": 0.5583198334788904,
+            "cohens_d": 0.6072828032470377
+          },
+          "keyword_fallback": {
+            "progressive_mean": 0.002197131522734208,
+            "traditional_mean": 0.0015111111111111113,
+            "cohens_d": 0.04498591423017346
+          },
+          "pooled_cohens_d": 0.26850729684167485
+        }
+      }
+    },
     "stance_frame_correlations": {
       "frame_accountability": {
         "pearson_r": -0.2105727388726351,
@@ -3051,6 +3125,55 @@
       "p_value": 7.209008910387547e-120,
       "p_value_bh": 3.6045044551937737e-119
     },
+    "instrument_mixing_diagnostic": {
+      "note": "frame_* scores mix two instruments on different scales; pooled probability-score contrasts are not interpretable. Use the zeroshot-only contrasts (framing_zeroshot_only).",
+      "share_scored_by_zeroshot": {
+        "Progressive": 1.0,
+        "Traditional": 1.0
+      },
+      "per_frame_by_instrument": {
+        "frame_accountability": {
+          "zeroshot": {
+            "progressive_mean": 0.897953749421484,
+            "traditional_mean": 0.8573893090943281,
+            "cohens_d": 0.2492012471471003
+          },
+          "pooled_cohens_d": 0.2492012471471003
+        },
+        "frame_conflict": {
+          "zeroshot": {
+            "progressive_mean": 0.9266451808934786,
+            "traditional_mean": 0.9384774459798161,
+            "cohens_d": -0.11899544101560755
+          },
+          "pooled_cohens_d": -0.11899544101560755
+        },
+        "frame_consequences": {
+          "zeroshot": {
+            "progressive_mean": 0.30340660278503234,
+            "traditional_mean": 0.25044333928932205,
+            "cohens_d": 0.21649252692163168
+          },
+          "pooled_cohens_d": 0.21649252692163168
+        },
+        "frame_human_interest": {
+          "zeroshot": {
+            "progressive_mean": 0.8295772547308274,
+            "traditional_mean": 0.9037073505530329,
+            "cohens_d": -0.4128949189718154
+          },
+          "pooled_cohens_d": -0.4128949189718154
+        },
+        "frame_reform": {
+          "zeroshot": {
+            "progressive_mean": 0.6997929956651932,
+            "traditional_mean": 0.5583198334788904,
+            "cohens_d": 0.6072828032470377
+          },
+          "pooled_cohens_d": 0.6072828032470377
+        }
+      }
+    },
     "stance_frame_correlations": {
       "frame_accountability": {
         "pearson_r": -0.3929691522509965,
@@ -3083,7 +3206,7 @@
   },
   "sensitivity_mention_dominance": {
     "rule": "primary named >=2 times or in headline AND named more often than all other prosecutors combined (study + prominent non-study)",
-    "validation": "Against 57 RA-flagged low-relevance/wrong-target articles across three validation packets: drops 84% of flagged articles (vs 72% for the mentions-only rule) at 94% precision. Rule was developed using these flags, so it is in-sample; out-of-sample confirmation pending.",
+    "validation": "Against the pooled benchmark of 55 RA-flagged low-relevance/wrong-target articles among 333 coded across validation packets 01-03: drops 83.6% of flagged articles at 94.5% precision, versus 70.9%/91.4% for the mentions-only rule. Reproduce with ra_langextract_validation/scripts/build_relevance_benchmark.py. Both rules were developed using these flags, so the figures are in-sample upper bounds; out-of-sample confirmation pending.",
     "n_total": 12827,
     "n_kept": 3781,
     "n_dropped": 9046,
