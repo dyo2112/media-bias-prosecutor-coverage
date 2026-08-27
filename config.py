@@ -1,14 +1,20 @@
 """Central configuration for the media bias analysis pipeline."""
 
+import os
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
 from typing import Optional
 
 # ── Paths ──────────────────────────────────────────────────────────────────
-DATA_DIR = Path(r"C:\Users\dviry\My Drive\Papers and ClassReading\Berkeley\postdoc\media")
+# Paths are derived from this file's location so the repository is portable.
+# Outputs always live beside the code. The raw corpus is not redistributable
+# and lives outside the repository; set MEDIA_BIAS_DATA_DIR to the directory
+# holding it (defaults to the repository's parent).
+REPO_DIR = Path(__file__).resolve().parent
+DATA_DIR = Path(os.environ.get("MEDIA_BIAS_DATA_DIR", REPO_DIR.parent))
 RAW_TSV = DATA_DIR / "24.07.29_complete_corpus_api_lexis_combined.tsv"
-OUTPUT_DIR = DATA_DIR / "media_bias_python" / "output"
+OUTPUT_DIR = REPO_DIR / "output"
 FIGURES_DIR = OUTPUT_DIR / "figures"
 
 # Intermediate files
