@@ -20,3 +20,18 @@ The genuine completed coding lives in `completed/*.csv` at the top level:
 
 Do not move these back into `completed/`, and never cite any statistic
 computed from them.
+
+## derived_summary/
+
+`summarize_ra_labels.py` was run against the fixtures above at some point and
+wrote its outputs into `summary/`. Those files carry `_ra1` / `_ra2` suffixes
+and contain agreement and Cohen's kappa tables — i.e. inter-rater reliability
+statistics computed from fabricated coding. They are moved here for the same
+reason as the fixtures themselves.
+
+For contrast: the fixture-derived `01_stance_confusion_ra1.csv` reports a
+critical row of 5 / 7 / 15, whereas the real completed packet gives 6 / 7 / 8.
+Nothing in `derived_summary/` describes real data.
+
+Regenerate a genuine summary by running `scripts/summarize_ra_labels.py` after
+placing real completed files in `completed/`.
