@@ -22,7 +22,7 @@ Headline figures after all fixes:
 | Composite (pooled) | −0.151 | upper bound; see finding 1 |
 | Composite (credible designs) | ≈ −0.07 | what the clean estimates agree on |
 | Stance | −0.337 | carries the composite |
-| Keyword salience | −0.203 | −0.264 where the instrument can measure |
+| Keyword salience | −0.203 | −0.264 where the instrument can measure (`sensitivity_no_fallback.keyword_zero_inflation`) |
 | Theme attribution | +0.418 | substantially event-driven; see finding 2 |
 | Framing (zero-shot only) | V = 0.282 | pooled version withdrawn; see finding 3 |
 
@@ -62,7 +62,9 @@ extraction audit, case-type coding, extraction recall) covering 373 distinct
 articles. Key results, all reported in the manuscript:
 
 - Article-level stance agreement with the model is no better than chance
-  (Cohen's κ = 0.049); the classifier over-assigns "supportive" (45 versus 18).
+  (Cohen's κ = 0.049); within the 84 articles carrying both labels the
+  classifier over-assigns "supportive" (45 model-supportive versus 18
+  human-supportive).
   The continuous score is monotone in human labels, so stance supports aggregate
   contrasts but not article-level or absolute claims.
 - Extraction: 98.8% of spans are textually grounded, class precision 96.6%, but
