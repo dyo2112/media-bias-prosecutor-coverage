@@ -32,6 +32,9 @@ paper/*.log
 paper/*.out
 paper/*.blg
 paper/*.bbl
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.synctex.gz
 paper/nul
 paper/texput.log
 paper/desktop.ini

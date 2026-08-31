@@ -9,9 +9,10 @@ Usage:
     Core + Step 08 structural extraction (requires LANGEXTRACT_API_KEY).
 
   py -3 run_pipeline.py --paper
-    Core + publication-lock extras:
+    Core + publication-lock extras, ordered 04 -> 05 -> 06 -> 10 -> 12 -> 07:
       - Step 10 theme attribution
       - Step 12 segmented ITS
+      - Step 07 figures (runs last; it consumes Step 10's output)
       - paper/build_stats_tex.py
 
   py -3 run_pipeline.py --paper --with-langextract
@@ -39,7 +40,6 @@ BASE_STEPS = [
     ("", "Bias detection (Methods A,B,C,D)", [PYTHON_EXE, "04_bias_detection.py"]),
     ("", "Framing analysis", [PYTHON_EXE, "05_framing_analysis.py"]),
     ("", "Statistical analysis", [PYTHON_EXE, "06_statistics.py"]),
-    ("", "Generating figures", [PYTHON_EXE, "07_visualize.py"]),
 ]
 
 LANGEXTRACT_STEP = (
@@ -48,11 +48,21 @@ LANGEXTRACT_STEP = (
     [PYTHON_EXE, "08_langextract_analysis.py"],
 )
 
-PAPER_STEPS = [
+# Step 07 reads 08_extraction_stats.json, 10_theme_stats.json and
+# 10_theme_attribution.parquet, so it must run after the optional langextract
+# step and after the paper analyses -- not in the middle of the base sequence.
+VISUALIZE_STEP = ("", "Generating figures", [PYTHON_EXE, "07_visualize.py"])
+
+PAPER_ANALYSIS_STEPS = [
     ("", "Theme attribution analysis", [PYTHON_EXE, "10_theme_attribution.py"]),
     ("", "Segmented ITS robustness", [PYTHON_EXE, "12_segmented_its.py"]),
-    ("", "Generate manuscript stats macros", [PYTHON_EXE, "paper/build_stats_tex.py"]),
 ]
+
+PAPER_MACRO_STEP = (
+    "",
+    "Generate manuscript stats macros",
+    [PYTHON_EXE, "paper/build_stats_tex.py"],
+)
 
 
 def log(msg: str, f) -> None:
@@ -115,7 +125,10 @@ def main() -> None:
     if run_langextract:
         steps.append(LANGEXTRACT_STEP)
     if run_paper:
-        steps.extend(PAPER_STEPS)
+        steps.extend(PAPER_ANALYSIS_STEPS)
+    steps.append(VISUALIZE_STEP)
+    if run_paper:
+        steps.append(PAPER_MACRO_STEP)
 
     total = len(steps)
     labeled_steps = [

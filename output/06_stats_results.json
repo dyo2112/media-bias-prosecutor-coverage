@@ -2871,6 +2871,45 @@
       "p2": 1.612436580768952e-81,
       "p_tost": 0.9998915956902593,
       "equivalent": false
+    },
+    "keyword_zero_inflation": {
+      "full_sample": {
+        "subsample": "full_sample",
+        "progressive_n": 6585,
+        "traditional_n": 6242,
+        "progressive_mean": -0.020264911836665823,
+        "traditional_mean": -0.01087614368614048,
+        "progressive_pct_exact_zero": 84.88990129081245,
+        "traditional_pct_exact_zero": 91.41300865107337,
+        "welch_t": -11.576382126691708,
+        "welch_p": 7.921063734882932e-31,
+        "cohens_d": -0.2027707036016081
+      },
+      "measurable": {
+        "subsample": "named_mention_available",
+        "progressive_n": 3322,
+        "traditional_n": 2854,
+        "progressive_mean": -0.04016991103083819,
+        "traditional_mean": -0.02370941368839056,
+        "progressive_pct_exact_zero": 70.04816375677304,
+        "traditional_pct_exact_zero": 81.28941836019622,
+        "welch_t": -10.552200475761362,
+        "welch_p": 8.263779296160929e-26,
+        "cohens_d": -0.26429227017389767
+      },
+      "fallback_only": {
+        "subsample": "fallback_attributed",
+        "progressive_n": 3263,
+        "traditional_n": 3388,
+        "progressive_mean": 0.0,
+        "traditional_mean": -6.559097468188377e-05,
+        "progressive_pct_exact_zero": 100.0,
+        "traditional_pct_exact_zero": 99.9409681227863,
+        "welch_t": 1.414422379437707,
+        "welch_p": 0.15732984040332915,
+        "cohens_d": 0.0340469322548351
+      },
+      "fallback_pct_exact_zero": 99.96992933393474
     }
   },
   "sensitivity_quote_masked": {

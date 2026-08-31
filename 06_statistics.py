@@ -341,6 +341,72 @@ def _fallback_assignment_mask(df: pd.DataFrame) -> tuple[pd.Series, str]:
     return pd.Series(False, index=df.index), "no_fallback_columns_available"
 
 
+def _keyword_zero_inflation(df: pd.DataFrame, fallback_mask: pd.Series) -> dict:
+    """Decompose the Method C differential by whether the instrument can measure.
+
+    Method C scores anti-prosecutor theme density inside windows around named
+    prosecutor mentions, so an article with no named mention has no window and
+    scores exactly 0.0 -- the most favorable value on the measure's [-1, 0]
+    range. That is a structural zero, not an observation of neutral coverage,
+    and its rate differs by group. Reporting the differential separately on the
+    measurable and all-zero subsamples shows whether those zeros dilute the
+    effect or manufacture it. Backs the decomposition in the manuscript.
+    """
+    col = "score_keywords"
+    if col not in df.columns:
+        return {"error": "score_keywords_column_missing"}
+
+    def _split(sub: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+        prog = sub.loc[sub["prosecutor_type"] == "Progressive", col].dropna().values
+        trad = sub.loc[sub["prosecutor_type"] == "Traditional", col].dropna().values
+        return prog, trad
+
+    def _contrast(sub: pd.DataFrame, label: str) -> dict:
+        prog, trad = _split(sub)
+        if len(prog) < 5 or len(trad) < 5:
+            return {"subsample": label, "error": "insufficient_data"}
+        t_stat, p_val = ttest_ind(prog, trad, equal_var=False)
+        return {
+            "subsample": label,
+            "progressive_n": int(len(prog)),
+            "traditional_n": int(len(trad)),
+            "progressive_mean": float(np.mean(prog)),
+            "traditional_mean": float(np.mean(trad)),
+            "progressive_pct_exact_zero": float(100 * np.mean(prog == 0.0)),
+            "traditional_pct_exact_zero": float(100 * np.mean(trad == 0.0)),
+            "welch_t": float(t_stat),
+            "welch_p": float(p_val),
+            "cohens_d": float(cohens_d(prog, trad)),
+        }
+
+    measurable = df.loc[~fallback_mask]
+    fallback = df.loc[fallback_mask]
+    fallback_scores = fallback[col].dropna().values
+
+    result = {
+        "full_sample": _contrast(df, "full_sample"),
+        "measurable": _contrast(measurable, "named_mention_available"),
+        "fallback_only": _contrast(fallback, "fallback_attributed"),
+        "fallback_pct_exact_zero": (
+            float(100 * np.mean(fallback_scores == 0.0))
+            if len(fallback_scores) > 0
+            else None
+        ),
+    }
+
+    for key in ("full_sample", "measurable", "fallback_only"):
+        block = result[key]
+        if "cohens_d" in block:
+            logger.info(
+                f"Method C {block['subsample']}: d={block['cohens_d']:.4f}, "
+                f"p={block['welch_p']:.3g}, "
+                f"n={block['progressive_n']}/{block['traditional_n']}, "
+                f"zeros {block['progressive_pct_exact_zero']:.1f}% vs "
+                f"{block['traditional_pct_exact_zero']:.1f}%"
+            )
+    return result
+
+
 def analysis_12_sensitivity_no_fallback(df: pd.DataFrame) -> dict:
     """Recompute group comparison after excluding fallback-attributed articles."""
     logger.info("\n" + "=" * 70)
@@ -423,6 +489,7 @@ def analysis_12_sensitivity_no_fallback(df: pd.DataFrame) -> dict:
         "bootstrap_ci_lower": diff_lo,
         "bootstrap_ci_upper": diff_hi,
         "tost": tost,
+        "keyword_zero_inflation": _keyword_zero_inflation(df, fallback_mask),
     }
 
 
